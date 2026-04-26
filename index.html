@@ -10,7 +10,9 @@
             --bg-color: #f4f7f6;
             --card-bg: #ffffff;
             --text-main: #333333;
+            --text-muted: #666666;
             --accent-color: #e63946;
+            --info-color: #2a9d8f;
         }
 
         body {
@@ -41,10 +43,11 @@
             display: flex;
             flex-direction: column;
             gap: 20px;
+            padding-bottom: 40px;
         }
 
-        /* カウントダウンセクション */
-        .countdown-card {
+        /* 共通カードスタイル */
+        .card {
             background: var(--card-bg);
             border-radius: 15px;
             padding: 30px;
@@ -52,12 +55,13 @@
             box-shadow: 0 10px 25px rgba(0,0,0,0.1);
         }
 
-        .countdown-label {
+        .section-label {
             font-size: 1rem;
             color: var(--text-muted);
             margin-bottom: 10px;
         }
 
+        /* カウントダウンセクション */
         .countdown-target {
             font-weight: bold;
             font-size: 1.2rem;
@@ -74,6 +78,34 @@
         .days-unit {
             font-size: 1.5rem;
             color: var(--accent-color);
+        }
+
+        /* 練習情報セクション */
+        .practice-info {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            background-color: #f8fdfc;
+            border: 2px solid #e0f2f1;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: center;
+            align-items: baseline;
+            gap: 10px;
+        }
+
+        .info-title {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            font-weight: bold;
+        }
+
+        .info-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--info-color);
         }
 
         /* メインナビゲーションボタン */
@@ -98,6 +130,7 @@
 
         .nav-button.secondary {
             background-color: #555;
+            box-shadow: 0 4px 15px rgba(85,85,85,0.2);
         }
 
         /* SNSセクション */
@@ -105,7 +138,7 @@
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 15px;
-            margin-top: 20px;
+            margin-top: 10px;
         }
 
         .sns-link {
@@ -130,12 +163,26 @@
     </header>
 
     <div class="container">
-        <section class="countdown-card">
-            <div class="countdown-label">次の大会まで</div>
+        <!-- カウントダウンセクション -->
+        <section class="card">
+            <div class="section-label">次の大会まで</div>
             <div id="event-name" class="countdown-target">読み込み中...</div>
             <div>
                 <span id="days-count" class="days-remaining">--</span>
                 <span class="days-unit">DAYS LEFT</span>
+            </div>
+        </section>
+
+        <!-- 今週の練習情報セクション -->
+        <section class="card practice-info">
+            <div class="section-label">今週の練習情報</div>
+            <div class="info-row">
+                <span class="info-title">場所:</span>
+                <span id="practice-location" class="info-value">読み込み中...</span>
+            </div>
+            <div class="info-row">
+                <span class="info-title">集合:</span>
+                <span id="practice-time" class="info-value">--:--</span>
             </div>
         </section>
 
@@ -181,7 +228,25 @@
             }
         }
 
+        // 今週の練習情報を取得して表示する関数
+        async function initPracticeInfo() {
+            try {
+                const gasUrl = "https://script.google.com/macros/s/AKfycbxNpLrXJ3ny7M5OxjfnivwHEaJeHNQ8A9oXPXMP6VEB26xpVpzhEULAgUCvkrJaVrc/exec";
+                const response = await fetch(gasUrl);
+                const data = await response.json();
+
+                document.getElementById('practice-location').innerText = data.location || "未定";
+                document.getElementById('practice-time').innerText = data.time || "--:--";
+            } catch (error) {
+                console.error("練習情報の取得に失敗しました:", error);
+                document.getElementById('practice-location').innerText = "情報取得エラー";
+                document.getElementById('practice-time').innerText = "--:--";
+            }
+        }
+
+        // 初期化実行
         initPortal();
+        initPracticeInfo();
     </script>
 </body>
 </html>
