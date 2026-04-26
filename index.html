@@ -103,6 +103,21 @@
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         }
 
+        .date-badge-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 50px;
+            flex-shrink: 0;
+        }
+
+        .practice-date {
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: var(--text-muted);
+            margin-bottom: 2px;
+        }
+
         .day-badge {
             font-weight: bold;
             color: white;
@@ -111,7 +126,6 @@
             font-size: 0.9rem;
             width: 45px;
             text-align: center;
-            flex-shrink: 0;
         }
         .day-badge.mon { background-color: #fca311; }
         .day-badge.wed { background-color: #4ea8de; }
@@ -144,7 +158,7 @@
             font-size: 0.75rem;
             color: var(--text-muted);
             margin-top: 4px;
-            display: none;
+            display: block;
         }
         .day-station::before {
             content: "🚉 ";
@@ -157,7 +171,7 @@
             min-width: 60px;
             text-align: right;
             flex-shrink: 0;
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; /* 時間を美しく見せるフォント */
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
         }
 
         .nav-button {
@@ -225,38 +239,9 @@
 
         <!-- 今週の練習情報セクション -->
         <section class="card practice-info">
-            <div class="section-label">今週の練習予定</div>
+            <div class="section-label">直近の練習予定</div>
             <div class="practice-days">
-                <div class="day-row">
-                    <span class="day-badge mon">月曜日</span>
-                    <div class="loc-time-container">
-                        <div class="loc-details">
-                            <span id="mon-loc" class="day-loc">読込中...</span>
-                            <span id="mon-station" class="day-station"></span>
-                        </div>
-                        <span id="mon-time" class="day-time">--:--</span>
-                    </div>
-                </div>
-                <div class="day-row">
-                    <span class="day-badge wed">水曜日</span>
-                    <div class="loc-time-container">
-                        <div class="loc-details">
-                            <span id="wed-loc" class="day-loc">読込中...</span>
-                            <span id="wed-station" class="day-station"></span>
-                        </div>
-                        <span id="wed-time" class="day-time">--:--</span>
-                    </div>
-                </div>
-                <div class="day-row">
-                    <span class="day-badge fri">金曜日</span>
-                    <div class="loc-time-container">
-                        <div class="loc-details">
-                            <span id="fri-loc" class="day-loc">読込中...</span>
-                            <span id="fri-station" class="day-station"></span>
-                        </div>
-                        <span id="fri-time" class="day-time">--:--</span>
-                    </div>
-                </div>
+                <div style="text-align: center; color: var(--text-muted); padding: 10px;">予定を読み込んでいます...</div>
             </div>
         </section>
 
@@ -270,7 +255,6 @@
     </div>
 
     <script>
-        // 大会データ
         const meets = [
             { date: "2026/05/02", name: "M×Kディスタンストライアル" },
             { date: "2026/05/16", name: "M×Kディスタンストライアル" },
@@ -301,54 +285,71 @@
             }
         }
 
-        function updateDayInfo(dayPrefix, dataObj) {
-            document.getElementById(`${dayPrefix}-loc`).innerText = dataObj.location;
-            document.getElementById(`${dayPrefix}-time`).innerText = dataObj.time;
-            
-            const stationEl = document.getElementById(`${dayPrefix}-station`);
-            if (dataObj.station) {
-                stationEl.innerText = dataObj.station;
-                stationEl.style.display = 'block';
-            } else {
-                stationEl.style.display = 'none';
-            }
-        }
-
         async function initPracticeInfo() {
+            const container = document.querySelector('.practice-days');
+            
             try {
-                // ここは取得済みのGASのウェブアプリURLのままにしてください
-                const gasUrl = "https://script.google.com/macros/s/AKfycbxNpLrXJ3ny7M5OxjfnivwHEaJeHNQ8A9oXPXMP6VEB26xpVpzhEULAgUCvkrJaVrc/exec";
+                // 前回指定された最新のGAS URL
+                const gasUrl = "https://script.google.com/macros/s/AKfycbwJP2Ep80n7AdZrqYdgNlkdTpr2h41l6fqLT2pvXe1cxOzd3FR1rkhyhi7XcsXGIVx8/exec"; 
+                
                 const response = await fetch(gasUrl);
                 const data = await response.json();
 
                 if (data.error) {
-                    if (data.error === "No data") {
-                        console.log("フォームの回答がまだありません。");
-                        const emptyData = { location: "未入力", time: "--:--", station: "" };
-                        updateDayInfo('mon', emptyData);
-                        updateDayInfo('wed', emptyData);
-                        updateDayInfo('fri', emptyData);
+                    if (data.error === "No data" || data.error === "No upcoming practices") {
+                        container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 10px;">今後の練習予定は未登録です。</div>';
                         return;
                     }
                     throw new Error(data.error);
                 }
 
-                updateDayInfo('mon', data.monday);
-                updateDayInfo('wed', data.wednesday);
-                updateDayInfo('fri', data.friday);
+                container.innerHTML = ''; 
+
+                let practicesToDisplay = [];
+                if (data.practices && Array.isArray(data.practices)) {
+                    practicesToDisplay = data.practices;
+                } else if (data.monday && data.wednesday && data.friday) {
+                    console.warn("古い形式のデータを受信。フォールバック実行。");
+                    practicesToDisplay = [
+                        { displayDate: "今週", dayLabel: "月", location: data.monday.location, station: data.monday.station, time: data.monday.time },
+                        { displayDate: "今週", dayLabel: "水", location: data.wednesday.location, station: data.wednesday.station, time: data.wednesday.time },
+                        { displayDate: "今週", dayLabel: "金", location: data.friday.location, station: data.friday.station, time: data.friday.time }
+                    ];
+                } else {
+                    throw new Error("APIのデータ構造が解釈できません。");
+                }
+
+                practicesToDisplay.forEach(p => {
+                    let badgeClass = 'mon';
+                    if (p.dayLabel === '水') badgeClass = 'wed';
+                    if (p.dayLabel === '金') badgeClass = 'fri';
+
+                    const stationHtml = p.station ? `<span class="day-station">${p.station}</span>` : `<span class="day-station" style="display:none;"></span>`;
+
+                    const html = `
+                        <div class="day-row">
+                            <div class="date-badge-container">
+                                <span class="practice-date">${p.displayDate}</span>
+                                <span class="day-badge ${badgeClass}">${p.dayLabel}</span>
+                            </div>
+                            <div class="loc-time-container">
+                                <div class="loc-details">
+                                    <span class="day-loc">${p.location}</span>
+                                    ${stationHtml}
+                                </div>
+                                <span class="day-time">${p.time}</span>
+                            </div>
+                        </div>
+                    `;
+                    container.insertAdjacentHTML('beforeend', html);
+                });
                 
             } catch (error) {
                 console.error("練習情報の取得に失敗しました:", error);
-                const days = ['mon', 'wed', 'fri'];
-                days.forEach(day => {
-                    document.getElementById(`${day}-loc`).innerText = "取得エラー";
-                    document.getElementById(`${day}-time`).innerText = "--:--";
-                    document.getElementById(`${day}-station`).style.display = 'none';
-                });
+                container.innerHTML = '<div style="text-align: center; color: var(--accent-color); padding: 10px;">情報の取得に失敗しました。</div>';
             }
         }
 
-        // 初期化実行
         initPortal();
         initPracticeInfo();
     </script>
