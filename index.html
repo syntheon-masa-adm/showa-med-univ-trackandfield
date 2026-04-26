@@ -80,7 +80,7 @@
             color: var(--accent-color);
         }
 
-        /* 練習情報セクション */
+        /* 練習情報セクション (3日間対応) */
         .practice-info {
             display: flex;
             flex-direction: column;
@@ -89,23 +89,57 @@
             border: 2px solid #e0f2f1;
         }
 
-        .info-row {
+        .practice-days {
             display: flex;
-            justify-content: center;
-            align-items: baseline;
-            gap: 10px;
+            flex-direction: column;
+            gap: 12px;
+            width: 100%;
         }
 
-        .info-title {
+        .day-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: white;
+            padding: 12px 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .day-badge {
+            font-weight: bold;
+            color: white;
+            padding: 5px 0;
+            border-radius: 20px;
             font-size: 0.9rem;
-            color: var(--text-muted);
-            font-weight: bold;
+            width: 45px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        .day-badge.mon { background-color: #fca311; }
+        .day-badge.wed { background-color: #4ea8de; }
+        .day-badge.fri { background-color: #ef476f; }
+
+        .loc-time-container {
+            display: flex;
+            gap: 15px;
+            align-items: baseline;
+            justify-content: flex-end;
+            flex-grow: 1;
         }
 
-        .info-value {
-            font-size: 1.5rem;
+        .day-loc {
             font-weight: bold;
+            color: var(--text-main);
+            font-size: 1.1rem;
+        }
+
+        .day-time {
             color: var(--info-color);
+            font-weight: bold;
+            font-size: 1.2rem;
+            min-width: 60px;
+            text-align: right;
         }
 
         /* メインナビゲーションボタン */
@@ -175,14 +209,29 @@
 
         <!-- 今週の練習情報セクション -->
         <section class="card practice-info">
-            <div class="section-label">今週の練習情報</div>
-            <div class="info-row">
-                <span class="info-title">場所:</span>
-                <span id="practice-location" class="info-value">読み込み中...</span>
-            </div>
-            <div class="info-row">
-                <span class="info-title">集合:</span>
-                <span id="practice-time" class="info-value">--:--</span>
+            <div class="section-label">今週の練習予定</div>
+            <div class="practice-days">
+                <div class="day-row">
+                    <span class="day-badge mon">月曜日</span>
+                    <div class="loc-time-container">
+                        <span id="mon-loc" class="day-loc">読込中...</span>
+                        <span id="mon-time" class="day-time">--:--</span>
+                    </div>
+                </div>
+                <div class="day-row">
+                    <span class="day-badge wed">水曜日</span>
+                    <div class="loc-time-container">
+                        <span id="wed-loc" class="day-loc">読込中...</span>
+                        <span id="wed-time" class="day-time">--:--</span>
+                    </div>
+                </div>
+                <div class="day-row">
+                    <span class="day-badge fri">金曜日</span>
+                    <div class="loc-time-container">
+                        <span id="fri-loc" class="day-loc">読込中...</span>
+                        <span id="fri-time" class="day-time">--:--</span>
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -228,19 +277,33 @@
             }
         }
 
-        // 今週の練習情報を取得して表示する関数
+        // 今週の練習情報を取得して表示する関数 (3日間対応)
         async function initPracticeInfo() {
             try {
+                // 前回発行したGASのウェブアプリURL（変更した場合は差し替えてください）
                 const gasUrl = "https://script.google.com/macros/s/AKfycbxNpLrXJ3ny7M5OxjfnivwHEaJeHNQ8A9oXPXMP6VEB26xpVpzhEULAgUCvkrJaVrc/exec";
                 const response = await fetch(gasUrl);
                 const data = await response.json();
 
-                document.getElementById('practice-location').innerText = data.location || "未定";
-                document.getElementById('practice-time').innerText = data.time || "--:--";
+                if (data.error) throw new Error(data.error);
+
+                // 月・水・金のデータをUIに適用
+                document.getElementById('mon-loc').innerText = data.monday.location;
+                document.getElementById('mon-time').innerText = data.monday.time;
+                
+                document.getElementById('wed-loc').innerText = data.wednesday.location;
+                document.getElementById('wed-time').innerText = data.wednesday.time;
+                
+                document.getElementById('fri-loc').innerText = data.friday.location;
+                document.getElementById('fri-time').innerText = data.friday.time;
+                
             } catch (error) {
                 console.error("練習情報の取得に失敗しました:", error);
-                document.getElementById('practice-location').innerText = "情報取得エラー";
-                document.getElementById('practice-time').innerText = "--:--";
+                const days = ['mon', 'wed', 'fri'];
+                days.forEach(day => {
+                    document.getElementById(`${day}-loc`).innerText = "取得エラー";
+                    document.getElementById(`${day}-time`).innerText = "--:--";
+                });
             }
         }
 
