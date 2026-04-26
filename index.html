@@ -80,7 +80,7 @@
             color: var(--accent-color);
         }
 
-        /* 練習情報セクション (3日間対応) */
+        /* 練習情報セクション (3日間・最寄駅対応) */
         .practice-info {
             display: flex;
             flex-direction: column;
@@ -120,18 +120,37 @@
         .day-badge.wed { background-color: #4ea8de; }
         .day-badge.fri { background-color: #ef476f; }
 
+        /* ロケーションと駅名・時間のコンテナレイアウト */
         .loc-time-container {
             display: flex;
             gap: 15px;
-            align-items: baseline;
-            justify-content: flex-end;
+            align-items: center;
+            justify-content: space-between;
             flex-grow: 1;
+            margin-left: 15px;
+        }
+
+        .loc-details {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
         }
 
         .day-loc {
             font-weight: bold;
             color: var(--text-main);
             font-size: 1.1rem;
+            line-height: 1.2;
+        }
+
+        .day-station {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+            display: none; /* JSで値がある場合のみ表示する */
+        }
+        .day-station::before {
+            content: "🚉 ";
         }
 
         .day-time {
@@ -140,6 +159,7 @@
             font-size: 1.2rem;
             min-width: 60px;
             text-align: right;
+            flex-shrink: 0;
         }
 
         /* メインナビゲーションボタン */
@@ -214,21 +234,30 @@
                 <div class="day-row">
                     <span class="day-badge mon">月曜日</span>
                     <div class="loc-time-container">
-                        <span id="mon-loc" class="day-loc">読込中...</span>
+                        <div class="loc-details">
+                            <span id="mon-loc" class="day-loc">読込中...</span>
+                            <span id="mon-station" class="day-station"></span>
+                        </div>
                         <span id="mon-time" class="day-time">--:--</span>
                     </div>
                 </div>
                 <div class="day-row">
                     <span class="day-badge wed">水曜日</span>
                     <div class="loc-time-container">
-                        <span id="wed-loc" class="day-loc">読込中...</span>
+                        <div class="loc-details">
+                            <span id="wed-loc" class="day-loc">読込中...</span>
+                            <span id="wed-station" class="day-station"></span>
+                        </div>
                         <span id="wed-time" class="day-time">--:--</span>
                     </div>
                 </div>
                 <div class="day-row">
                     <span class="day-badge fri">金曜日</span>
                     <div class="loc-time-container">
-                        <span id="fri-loc" class="day-loc">読込中...</span>
+                        <div class="loc-details">
+                            <span id="fri-loc" class="day-loc">読込中...</span>
+                            <span id="fri-station" class="day-station"></span>
+                        </div>
                         <span id="fri-time" class="day-time">--:--</span>
                     </div>
                 </div>
@@ -245,7 +274,7 @@
     </div>
 
     <script>
-        // 大会データ（schedule/index.htmlと同期させる）
+        // 大会データ
         const meets = [
             { date: "2026/05/02", name: "M×Kディスタンストライアル" },
             { date: "2026/05/16", name: "M×Kディスタンストライアル" },
@@ -258,7 +287,6 @@
 
         function initPortal() {
             const now = new Date();
-            // 今日以降で最も近い大会を探す
             const futureMeets = meets
                 .map(m => ({ ...m, dateObj: new Date(m.date) }))
                 .filter(m => m.dateObj >= now.setHours(0,0,0,0))
@@ -277,25 +305,42 @@
             }
         }
 
-        // 今週の練習情報を取得して表示する関数 (3日間対応)
+        // 表示の更新用ヘルパー関数
+        function updateDayInfo(dayPrefix, dataObj) {
+            document.getElementById(`${dayPrefix}-loc`).innerText = dataObj.location;
+            document.getElementById(`${dayPrefix}-time`).innerText = dataObj.time;
+            
+            const stationEl = document.getElementById(`${dayPrefix}-station`);
+            if (dataObj.station) {
+                stationEl.innerText = dataObj.station;
+                stationEl.style.display = 'block';
+            } else {
+                stationEl.style.display = 'none';
+            }
+        }
+
         async function initPracticeInfo() {
             try {
-                // 前回発行したGASのウェブアプリURL（変更した場合は差し替えてください）
+                // 前回発行したGASのウェブアプリURLをセット
                 const gasUrl = "https://script.google.com/macros/s/AKfycbxNpLrXJ3ny7M5OxjfnivwHEaJeHNQ8A9oXPXMP6VEB26xpVpzhEULAgUCvkrJaVrc/exec";
                 const response = await fetch(gasUrl);
                 const data = await response.json();
 
-                if (data.error) throw new Error(data.error);
+                if (data.error) {
+                    if (data.error === "No data") {
+                        console.log("フォームの回答がまだありません。");
+                        const emptyData = { location: "未入力", time: "--:--", station: "" };
+                        updateDayInfo('mon', emptyData);
+                        updateDayInfo('wed', emptyData);
+                        updateDayInfo('fri', emptyData);
+                        return; // データがない場合はここで終了
+                    }
+                    throw new Error(data.error);
+                }
 
-                // 月・水・金のデータをUIに適用
-                document.getElementById('mon-loc').innerText = data.monday.location;
-                document.getElementById('mon-time').innerText = data.monday.time;
-                
-                document.getElementById('wed-loc').innerText = data.wednesday.location;
-                document.getElementById('wed-time').innerText = data.wednesday.time;
-                
-                document.getElementById('fri-loc').innerText = data.friday.location;
-                document.getElementById('fri-time').innerText = data.friday.time;
+                updateDayInfo('mon', data.monday);
+                updateDayInfo('wed', data.wednesday);
+                updateDayInfo('fri', data.friday);
                 
             } catch (error) {
                 console.error("練習情報の取得に失敗しました:", error);
@@ -303,6 +348,7 @@
                 days.forEach(day => {
                     document.getElementById(`${day}-loc`).innerText = "取得エラー";
                     document.getElementById(`${day}-time`).innerText = "--:--";
+                    document.getElementById(`${day}-station`).style.display = 'none';
                 });
             }
         }
