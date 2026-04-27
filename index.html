@@ -101,6 +101,7 @@
             padding: 12px 15px;
             border-radius: 10px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            position: relative;
         }
 
         .date-badge-container {
@@ -133,7 +134,7 @@
 
         .loc-time-container {
             display: flex;
-            gap: 15px;
+            gap: 10px;
             align-items: center;
             justify-content: space-between;
             flex-grow: 1;
@@ -145,6 +146,7 @@
             flex-direction: column;
             align-items: flex-start;
             text-align: left;
+            flex-grow: 1;
         }
 
         .day-loc {
@@ -164,14 +166,32 @@
             content: "🚉 ";
         }
 
+        /* 天気情報のコンテナ */
+        .time-weather-container {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            min-width: 70px;
+            flex-shrink: 0;
+        }
+
         .day-time {
             color: var(--info-color);
             font-weight: bold;
             font-size: 1.2rem;
-            min-width: 60px;
-            text-align: right;
-            flex-shrink: 0;
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        }
+
+        .weather-box {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 3px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: #f0f4f8;
+            padding: 2px 6px;
+            border-radius: 8px;
         }
 
         .nav-button {
@@ -227,7 +247,6 @@
     </header>
 
     <div class="container">
-        <!-- カウントダウンセクション -->
         <section class="card">
             <div class="section-label">次の大会まで</div>
             <div id="event-name" class="countdown-target">読み込み中...</div>
@@ -237,7 +256,6 @@
             </div>
         </section>
 
-        <!-- 今週の練習情報セクション -->
         <section class="card practice-info">
             <div class="section-label">直近の練習予定</div>
             <div class="practice-days">
@@ -285,11 +303,57 @@
             }
         }
 
+        // WMO気象コードを絵文字に変換
+        function getWeatherEmoji(code) {
+            if (code === 0) return "☀️"; // 晴れ
+            if (code === 1 || code === 2) return "⛅️"; // 晴れ時々曇り
+            if (code === 3) return "☁️"; // 曇り
+            if (code >= 45 && code <= 48) return "🌫"; // 霧
+            if (code >= 51 && code <= 67) return "☔️"; // 雨
+            if (code >= 71 && code <= 77) return "⛄️"; // 雪
+            if (code >= 80 && code <= 82) return "🌧"; // にわか雨
+            if (code >= 95) return "⚡️"; // 雷雨
+            return "🌡";
+        }
+
+        // 天気API (Open-Meteo) からデータを取得する関数
+        async function fetchWeather(lat, lon, dateStr, timeStr, elementId) {
+            if (!lat || !lon || timeStr === "--:--") return;
+            
+            try {
+                // 時間のパース ("18:30" -> 18)
+                const startHour = parseInt(timeStr.split(':')[0], 10);
+                if (isNaN(startHour)) return;
+
+                // Open-Meteo API (緯度・経度から指定日の1時間ごとの天気を取得)
+                const apiUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&start_date=${dateStr}&end_date=${dateStr}&hourly=temperature_2m,weathercode&timezone=Asia%2FTokyo`;
+                
+                const response = await fetch(apiUrl);
+                const weatherData = await response.json();
+
+                // APIの配列から、練習開始時刻のインデックスを見つける
+                const targetTimePrefix = `${dateStr}T${String(startHour).padStart(2, '0')}:00`;
+                const index = weatherData.hourly.time.findIndex(t => t === targetTimePrefix);
+
+                if (index !== -1) {
+                    const temp = Math.round(weatherData.hourly.temperature_2m[index]);
+                    const code = weatherData.hourly.weathercode[index];
+                    const emoji = getWeatherEmoji(code);
+                    
+                    const weatherBox = document.getElementById(elementId);
+                    weatherBox.innerHTML = `${emoji} ${temp}℃`;
+                    weatherBox.style.display = 'flex';
+                }
+            } catch (error) {
+                console.error("天気データの取得に失敗しました", error);
+            }
+        }
+
         async function initPracticeInfo() {
             const container = document.querySelector('.practice-days');
             
             try {
-                // 前回指定された最新のGAS URL
+                // 【警告】ユーザーが使用している有効なURL
                 const gasUrl = "https://script.google.com/macros/s/AKfycbwJP2Ep80n7AdZrqYdgNlkdTpr2h41l6fqLT2pvXe1cxOzd3FR1rkhyhi7XcsXGIVx8/exec"; 
                 
                 const response = await fetch(gasUrl);
@@ -305,26 +369,15 @@
 
                 container.innerHTML = ''; 
 
-                let practicesToDisplay = [];
-                if (data.practices && Array.isArray(data.practices)) {
-                    practicesToDisplay = data.practices;
-                } else if (data.monday && data.wednesday && data.friday) {
-                    console.warn("古い形式のデータを受信。フォールバック実行。");
-                    practicesToDisplay = [
-                        { displayDate: "今週", dayLabel: "月", location: data.monday.location, station: data.monday.station, time: data.monday.time },
-                        { displayDate: "今週", dayLabel: "水", location: data.wednesday.location, station: data.wednesday.station, time: data.wednesday.time },
-                        { displayDate: "今週", dayLabel: "金", location: data.friday.location, station: data.friday.station, time: data.friday.time }
-                    ];
-                } else {
-                    throw new Error("APIのデータ構造が解釈できません。");
-                }
+                let practicesToDisplay = data.practices || [];
 
-                practicesToDisplay.forEach(p => {
+                practicesToDisplay.forEach((p, index) => {
                     let badgeClass = 'mon';
                     if (p.dayLabel === '水') badgeClass = 'wed';
                     if (p.dayLabel === '金') badgeClass = 'fri';
 
                     const stationHtml = p.station ? `<span class="day-station">${p.station}</span>` : `<span class="day-station" style="display:none;"></span>`;
+                    const weatherId = `weather-box-${index}`;
 
                     const html = `
                         <div class="day-row">
@@ -337,11 +390,20 @@
                                     <span class="day-loc">${p.location}</span>
                                     ${stationHtml}
                                 </div>
-                                <span class="day-time">${p.time}</span>
+                                <div class="time-weather-container">
+                                    <span class="day-time">${p.time}</span>
+                                    <div id="${weatherId}" class="weather-box" style="display:none;"></div>
+                                </div>
                             </div>
                         </div>
                     `;
                     container.insertAdjacentHTML('beforeend', html);
+
+                    // レンダリング後に非同期で天気を取得して流し込む
+                    // (天気の読み込みが遅くても、画面の表示をブロックしないための堅牢な設計)
+                    if (p.lat && p.lon && p.fullDateStr) {
+                        fetchWeather(p.lat, p.lon, p.fullDateStr, p.time, weatherId);
+                    }
                 });
                 
             } catch (error) {
