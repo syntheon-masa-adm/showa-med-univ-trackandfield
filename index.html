@@ -3,7 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- SEO & OGP Settings -->
     <title>昭和医科大学医学部陸上部 公式サイト</title>
+    <meta name="description" content="昭和医科大学医学部陸上競技部の公式ホームページです。最新の大会予定、直近の練習メニュー、活動場所などの情報を発信しています。新入部員・マネージャー募集中。">
+    <meta name="keywords" content="昭和大学, 昭和医科大学, 医学部, 陸上部, 練習メニュー, 大会日程, 部活">
+    <meta property="og:title" content="昭和医科大学医学部陸上部 公式サイト">
+    <meta property="og:description" content="昭和医科大学医学部陸上競技部の公式ホームページです。最新の練習予定や大会情報を確認できます。">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://your-github-username.github.io/your-repo-name/"> <!-- TODO: 実際のURLに変更 -->
+    
     <style>
         :root {
             --primary-color: #0056b3;
@@ -192,6 +201,7 @@
             background: #f0f4f8;
             padding: 2px 6px;
             border-radius: 8px;
+            min-height: 20px; /* ローディング時のガタつき防止 */
         }
 
         .nav-button {
@@ -259,20 +269,22 @@
         <section class="card practice-info">
             <div class="section-label">直近の練習予定</div>
             <div class="practice-days">
-                <div style="text-align: center; color: var(--text-muted); padding: 10px;">予定を読み込んでいます...</div>
+                <div id="practice-loading" style="text-align: center; color: var(--text-muted); padding: 10px;">予定を読み込んでいます...</div>
             </div>
         </section>
 
+        <!-- TODO: 実際のリンク先URLに変更すること -->
         <a href="./menu/" class="nav-button">今週の練習メニュー</a>
         <a href="./schedule/" class="nav-button secondary">大会スケジュール一覧</a>
 
         <div class="sns-container">
-            <a href="https://www.instagram.com/showa__trackandfield?igsh=MWRlbGs1M2EzY3A2dQ%3D%3D&utm_source=qr" target="_blank" class="sns-link instagram">Instagram</a>
+            <a href="https://www.instagram.com/showa__trackandfield" target="_blank" class="sns-link instagram">Instagram</a>
             <a href="https://lin.ee/tf78hYX" target="_blank" class="sns-link line">LINE公式アカウント</a>
         </div>
     </div>
 
     <script>
+        // --- 1. 大会カレンダー表示ロジック ---
         const meets = [
             { date: "2026/05/02", name: "M×Kディスタンストライアル" },
             { date: "2026/05/16", name: "M×Kディスタンストライアル" },
@@ -303,57 +315,77 @@
             }
         }
 
-        // WMO気象コードを絵文字に変換
+        // --- 2. 天気取得ロジック（最適化済） ---
         function getWeatherEmoji(code) {
-            if (code === 0) return "☀️"; // 晴れ
-            if (code === 1 || code === 2) return "⛅️"; // 晴れ時々曇り
-            if (code === 3) return "☁️"; // 曇り
-            if (code >= 45 && code <= 48) return "🌫"; // 霧
-            if (code >= 51 && code <= 67) return "☔️"; // 雨
-            if (code >= 71 && code <= 77) return "⛄️"; // 雪
-            if (code >= 80 && code <= 82) return "🌧"; // にわか雨
-            if (code >= 95) return "⚡️"; // 雷雨
+            if (code === 0) return "☀️"; 
+            if (code === 1 || code === 2) return "⛅️"; 
+            if (code === 3) return "☁️"; 
+            if (code >= 45 && code <= 48) return "🌫"; 
+            if (code >= 51 && code <= 67) return "☔️"; 
+            if (code >= 71 && code <= 77) return "⛄️"; 
+            if (code >= 80 && code <= 82) return "🌧"; 
+            if (code >= 95) return "⚡️"; 
             return "🌡";
         }
 
-        // 天気API (Open-Meteo) からデータを取得する関数
-        async function fetchWeather(lat, lon, dateStr, timeStr, elementId) {
-            if (!lat || !lon || timeStr === "--:--") return;
-            
-            try {
-                // 時間のパース ("18:30" -> 18)
-                const startHour = parseInt(timeStr.split(':')[0], 10);
-                if (isNaN(startHour)) return;
+        // 【改善点】複数日の天気を「1回のAPI通信」で一括取得する関数
+        async function fetchWeatherBulk(practices) {
+            if (!practices || practices.length === 0) return;
 
-                // Open-Meteo API (緯度・経度から指定日の1時間ごとの天気を取得)
-                const apiUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&start_date=${dateStr}&end_date=${dateStr}&hourly=temperature_2m,weathercode&timezone=Asia%2FTokyo`;
+            // 天気取得が必要なデータ（緯度経度があり、時間が設定されているもの）を抽出
+            const validPractices = practices.filter(p => p.lat && p.lon && p.time !== "--:--");
+            if (validPractices.length === 0) return;
+
+            // 最初の練習場所の緯度経度を使用（※複数の場所が大きく離れている場合は要再設計）
+            const lat = validPractices[0].lat;
+            const lon = validPractices[0].lon;
+
+            // 取得する期間（最も古い日〜最も新しい日）を算出
+            const dates = validPractices.map(p => p.fullDateStr).sort();
+            const startDate = dates[0];
+            const endDate = dates[dates.length - 1];
+
+            try {
+                // Open-Meteo API: 指定期間のデータを一括で取得
+                const apiUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&start_date=${startDate}&end_date=${endDate}&hourly=temperature_2m,weathercode&timezone=Asia%2FTokyo`;
                 
                 const response = await fetch(apiUrl);
+                if (!response.ok) throw new Error('Weather API fetch failed');
                 const weatherData = await response.json();
 
-                // APIの配列から、練習開始時刻のインデックスを見つける
-                const targetTimePrefix = `${dateStr}T${String(startHour).padStart(2, '0')}:00`;
-                const index = weatherData.hourly.time.findIndex(t => t === targetTimePrefix);
+                // 取得したデータを各DOM（HTML要素）に反映
+                validPractices.forEach((p, index) => {
+                    const startHour = parseInt(p.time.split(':')[0], 10);
+                    if (isNaN(startHour)) return;
 
-                if (index !== -1) {
-                    const temp = Math.round(weatherData.hourly.temperature_2m[index]);
-                    const code = weatherData.hourly.weathercode[index];
-                    const emoji = getWeatherEmoji(code);
-                    
-                    const weatherBox = document.getElementById(elementId);
-                    weatherBox.innerHTML = `${emoji} ${temp}℃`;
-                    weatherBox.style.display = 'flex';
-                }
+                    const targetTimePrefix = `${p.fullDateStr}T${String(startHour).padStart(2, '0')}:00`;
+                    const timeIndex = weatherData.hourly.time.findIndex(t => t === targetTimePrefix);
+
+                    if (timeIndex !== -1) {
+                        const temp = Math.round(weatherData.hourly.temperature_2m[timeIndex]);
+                        const code = weatherData.hourly.weathercode[timeIndex];
+                        const emoji = getWeatherEmoji(code);
+                        
+                        // 対応する要素を探して書き換え
+                        const weatherBox = document.getElementById(`weather-box-${p.id}`);
+                        if (weatherBox) {
+                            weatherBox.innerHTML = `${emoji} ${temp}℃`;
+                            weatherBox.style.display = 'flex';
+                        }
+                    }
+                });
+
             } catch (error) {
-                console.error("天気データの取得に失敗しました", error);
+                console.error("天気データの一括取得に失敗しました", error);
             }
         }
 
+        // --- 3. 練習予定取得ロジック ---
         async function initPracticeInfo() {
             const container = document.querySelector('.practice-days');
+            const loading = document.getElementById('practice-loading');
             
             try {
-                // 【警告】ユーザーが使用している有効なURL
                 const gasUrl = "https://script.google.com/macros/s/AKfycbwJP2Ep80n7AdZrqYdgNlkdTpr2h41l6fqLT2pvXe1cxOzd3FR1rkhyhi7XcsXGIVx8/exec"; 
                 
                 const response = await fetch(gasUrl);
@@ -371,13 +403,17 @@
 
                 let practicesToDisplay = data.practices || [];
 
+                // DOM（HTML要素）の生成
                 practicesToDisplay.forEach((p, index) => {
+                    // IDを付与（天気を一括で紐付けるため）
+                    p.id = `practice-${index}`; 
+                    
                     let badgeClass = 'mon';
                     if (p.dayLabel === '水') badgeClass = 'wed';
                     if (p.dayLabel === '金') badgeClass = 'fri';
 
                     const stationHtml = p.station ? `<span class="day-station">${p.station}</span>` : `<span class="day-station" style="display:none;"></span>`;
-                    const weatherId = `weather-box-${index}`;
+                    const weatherId = `weather-box-${p.id}`;
 
                     const html = `
                         <div class="day-row">
@@ -398,13 +434,10 @@
                         </div>
                     `;
                     container.insertAdjacentHTML('beforeend', html);
-
-                    // レンダリング後に非同期で天気を取得して流し込む
-                    // (天気の読み込みが遅くても、画面の表示をブロックしないための堅牢な設計)
-                    if (p.lat && p.lon && p.fullDateStr) {
-                        fetchWeather(p.lat, p.lon, p.fullDateStr, p.time, weatherId);
-                    }
                 });
+
+                // 【改善点】DOMの描画が完了した後に、一括で天気を取りに行く
+                fetchWeatherBulk(practicesToDisplay);
                 
             } catch (error) {
                 console.error("練習情報の取得に失敗しました:", error);
@@ -412,6 +445,7 @@
             }
         }
 
+        // 初期化実行
         initPortal();
         initPracticeInfo();
     </script>
