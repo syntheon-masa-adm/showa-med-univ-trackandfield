@@ -11,6 +11,7 @@
     <meta property="og:description" content="昭和医科大学医学部陸上競技部の公式ホームページです。最新の練習予定や大会情報を確認できます。">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://syntheon-masa-adm.github.io/showa-med-univ-trackandfield/"> 
+    <link rel="canonical" href="https://syntheon-masa-adm.github.io/showa-med-univ-trackandfield/">
     
     <style>
         :root {
@@ -277,6 +278,16 @@
         .instagram { background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); }
         .line { background-color: #06C755; }
     </style>
+    
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SportsTeam",
+      "name": "昭和医科大学 陸上部",
+      "sport": "Track and Field",
+      "url": "https://syntheon-masa-adm.github.io/showa-med-univ-trackandfield/"
+    }
+    </script>
 </head>
 <body>
 
@@ -303,11 +314,10 @@
         <section class="card practice-info">
             <div class="section-label">直近の練習予定</div>
             <div class="practice-days">
-                <div id="practice-loading" style="text-align: center; color: var(--text-muted); padding: 10px;">予定を読み込んでいます...</div>
+                <!-- INJECT_PRACTICE_HERE -->
             </div>
         </section>
 
-        <!-- TODO: 実際のリンク先URLに変更すること -->
         <a href="./menu/" class="nav-button">今週の練習メニュー</a>
         <a href="./schedule/" class="nav-button secondary">大会スケジュール一覧</a>
 
@@ -348,126 +358,8 @@
             }
         }
 
-        function getWeatherEmoji(code) {
-            if (code === 0) return "☀️"; 
-            if (code === 1 || code === 2) return "⛅️"; 
-            if (code === 3) return "☁️"; 
-            if (code >= 45 && code <= 48) return "🌫"; 
-            if (code >= 51 && code <= 67) return "☔️"; 
-            if (code >= 71 && code <= 77) return "⛄️"; 
-            if (code >= 80 && code <= 82) return "🌧"; 
-            if (code >= 95) return "⚡️"; 
-            return "🌡";
-        }
-
-        async function fetchWeatherBulk(practices) {
-            if (!practices || practices.length === 0) return;
-
-            const validPractices = practices.filter(p => p.lat && p.lon && p.time !== "--:--");
-            if (validPractices.length === 0) return;
-
-            const lat = validPractices[0].lat;
-            const lon = validPractices[0].lon;
-
-            const dates = validPractices.map(p => p.fullDateStr).sort();
-            const startDate = dates[0];
-            const endDate = dates[dates.length - 1];
-
-            try {
-                const apiUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&start_date=${startDate}&end_date=${endDate}&hourly=temperature_2m,weathercode&timezone=Asia%2FTokyo`;
-                
-                const response = await fetch(apiUrl);
-                if (!response.ok) throw new Error('Weather API fetch failed');
-                const weatherData = await response.json();
-
-                validPractices.forEach((p, index) => {
-                    const startHour = parseInt(p.time.split(':')[0], 10);
-                    if (isNaN(startHour)) return;
-
-                    const targetTimePrefix = `${p.fullDateStr}T${String(startHour).padStart(2, '0')}:00`;
-                    const timeIndex = weatherData.hourly.time.findIndex(t => t === targetTimePrefix);
-
-                    if (timeIndex !== -1) {
-                        const temp = Math.round(weatherData.hourly.temperature_2m[timeIndex]);
-                        const code = weatherData.hourly.weathercode[timeIndex];
-                        const emoji = getWeatherEmoji(code);
-                        
-                        const weatherBox = document.getElementById(`weather-box-${p.id}`);
-                        if (weatherBox) {
-                            weatherBox.innerHTML = `${emoji} ${temp}℃`;
-                            weatherBox.style.display = 'flex';
-                        }
-                    }
-                });
-
-            } catch (error) {
-                console.error("天気データの一括取得に失敗しました", error);
-            }
-        }
-
-        async function initPracticeInfo() {
-            const container = document.querySelector('.practice-days');
-            const loading = document.getElementById('practice-loading');
-            
-            try {
-                const gasUrl = "https://script.google.com/macros/s/AKfycbwJP2Ep80n7AdZrqYdgNlkdTpr2h41l6fqLT2pvXe1cxOzd3FR1rkhyhi7XcsXGIVx8/exec"; 
-                
-                const response = await fetch(gasUrl);
-                const data = await response.json();
-
-                if (data.error) {
-                    if (data.error === "No data" || data.error === "No upcoming practices") {
-                        container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 10px;">今後の練習予定は未登録です。</div>';
-                        return;
-                    }
-                    throw new Error(data.error);
-                }
-
-                container.innerHTML = ''; 
-
-                let practicesToDisplay = data.practices || [];
-
-                practicesToDisplay.forEach((p, index) => {
-                    p.id = `practice-${index}`; 
-                    
-                    let badgeClass = 'mon';
-                    if (p.dayLabel === '水') badgeClass = 'wed';
-                    if (p.dayLabel === '金') badgeClass = 'fri';
-
-                    const stationHtml = p.station ? `<span class="day-station">${p.station}</span>` : `<span class="day-station" style="display:none;"></span>`;
-                    const weatherId = `weather-box-${p.id}`;
-
-                    const html = `
-                        <div class="day-row">
-                            <div class="date-badge-container">
-                                <span class="practice-date">${p.displayDate}</span>
-                                <span class="day-badge ${badgeClass}">${p.dayLabel}</span>
-                            </div>
-                            <div class="loc-time-container">
-                                <div class="loc-details">
-                                    <span class="day-loc">${p.location}</span>
-                                    ${stationHtml}
-                                </div>
-                                <div class="time-weather-container">
-                                    <span class="day-time">${p.time}</span>
-                                    <div id="${weatherId}" class="weather-box" style="display:none;"></div>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                    container.insertAdjacentHTML('beforeend', html);
-                });
-
-                fetchWeatherBulk(practicesToDisplay);
-                
-            } catch (error) {
-                console.error("練習情報の取得に失敗しました:", error);
-                container.innerHTML = '<div style="text-align: center; color: var(--accent-color); padding: 10px;">情報の取得に失敗しました。</div>';
-            }
-        }
-
+        // 大会までのカウントダウンのみブラウザ側で実行（SEOに影響しないため）
         initPortal();
-        initPracticeInfo();
     </script>
 </body>
 </html>
