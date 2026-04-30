@@ -1,181 +1,48 @@
-import urllib.request
-import json
-import os
+import urllib.request, json, os, re
 from datetime import datetime, timezone, timedelta
 
-# --- 1. 大会カウントダウンの計算（日本語版用） ---
-meets = [
-    { "date": "2026/05/02", "name": "M×Kディスタンストライアル" },
-    { "date": "2026/05/16", "name": "M×Kディスタンストライアル" },
-    { "date": "2026/06/06", "name": "MDPV陸上大会" },
-    { "date": "2026/07/19", "name": "東コメ" },
-    { "date": "2026/08/08", "name": "東医体" },
-    { "date": "2026/08/29", "name": "全日本MDPV" },
-    { "date": "2026/09/20", "name": "関東医" }
-]
-
-JST = timezone(timedelta(hours=+9), 'JST')
-now_jst = datetime.now(JST)
-today_midnight = now_jst.replace(hour=0, minute=0, second=0, microsecond=0)
-
-next_meet = None
-days_left = 0
-
-for meet in meets:
-    meet_date = datetime.strptime(meet["date"], "%Y/%m/%d").replace(tzinfo=JST)
-    if meet_date >= today_midnight:
-        next_meet = meet
-        meet_midnight = meet_date.replace(hour=0, minute=0, second=0, microsecond=0)
-        days_left = (meet_midnight - today_midnight).days
-        break
-
-if next_meet:
-    countdown_html = f"""
-    <div id="event-name" class="countdown-target">{next_meet['name']}</div>
-    <div>
-        <span id="days-count" class="days-remaining">{days_left}</span>
-        <span class="days-unit">DAYS LEFT</span>
-    </div>
-    """
-else:
-    countdown_html = """
-    <div id="event-name" class="countdown-target">今シーズンの大会は終了しました</div>
-    <div>
-        <span id="days-count" class="days-remaining">0</span>
-        <span class="days-unit">DAYS LEFT</span>
-    </div>
-    """
-
-# --- 2. 練習予定の取得とHTML生成（日・英 同時作成） ---
-url = "https://script.google.com/macros/s/AKfycbwJP2Ep80n7AdZrqYdgNlkdTpr2h41l6fqLT2pvXe1cxOzd3FR1rkhyhi7XcsXGIVx8/exec"
+# データ取得
+GAS_URL = "https://script.google.com/macros/s/AKfycbwJP2Ep80n7AdZrqYdgNlkdTpr2h41l6fqLT2pvXe1cxOzd3FR1rkhyhi7XcsXGIVx8/exec"
+practices = []
 try:
-    req = urllib.request.Request(url)
-    with urllib.request.urlopen(req) as response:
-        data = json.loads(response.read().decode('utf-8'))
-        practices = data.get('practices', [])
-except Exception as e:
-    practices = []
+    with urllib.request.urlopen(GAS_URL) as res:
+        practices = json.loads(res.read().decode('utf-8')).get('practices', [])
+except: pass
 
-practice_html_jp = ""
-practice_html_en = ""
+# カウントダウン計算
+JST = timezone(timedelta(hours=+9), 'JST')
+now = datetime.now(JST)
+meets = [{"date": "2026/05/02", "name": "M×Kディスタンス"}, {"date": "2026/05/16", "name": "M×Kディスタンス"}, {"date": "2026/06/06", "name": "MDPV"}, {"date": "2026/07/19", "name": "東コメ"}, {"date": "2026/08/08", "name": "東医体"}, {"date": "2026/08/29", "name": "全日本MDPV"}, {"date": "2026/09/20", "name": "関東医"}]
+next_m = next((m for m in meets if datetime.strptime(m["date"], "%Y/%m/%d").replace(tzinfo=JST) >= now.replace(hour=0,minute=0,second=0,microsecond=0)), None)
+c_html = f'<div class="countdown-target">{next_m["name"]}</div><div><span class="days-remaining">{(datetime.strptime(next_m["date"], "%Y/%m/%d").replace(tzinfo=JST) - now.replace(hour=0,minute=0,second=0,microsecond=0)).days}</span><span class="days-unit">DAYS LEFT</span></div>' if next_m else '<div class="countdown-target">Season Ended</div>'
 
-# 英語翻訳用の辞書
-translator_days = {"月": "MON", "火": "TUE", "水": "WED", "木": "THU", "金": "FRI", "土": "SAT", "日": "SUN"}
-translator_locs = {
-    "東大駒場": "UTokyo Komaba", "織田フィールド": "Oda Field", "織田": "Oda Field",
-    "等々力競技場": "Todoroki Stadium", "等々力": "Todoroki Stadium", "大井競技場": "Oi Stadium",
-    "大井": "Oi Stadium", "夢の島競技場": "Yumenoshima Stadium", "済美山": "Saibiyama Track",
-    "大学グラウンド": "University Ground", "休み": "No Practice", "未定": "TBA"
-}
-color_styles = {
-    "MON": "border-orange-400 text-orange-500",
-    "WED": "border-blue-400 text-blue-500",
-    "FRI": "border-red-400 text-red-500",
-    "DEFAULT": "border-slate-400 text-slate-500"
-}
-month_abbr = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+# HTML生成
+jp_html = ""
+en_html = ""
+d_map = {"月":"MON","火":"TUE","水":"WED","木":"THU","金":"FRI","土":"SAT","日":"SUN"}
+l_map = {"東大":"UTokyo","織田":"Oda Field","等々力":"Todoroki","大井":"Oi Stadium","済美山":"Saibiyama","大学":"Uni Ground"}
 
-if not practices:
-    practice_html_jp = '<div style="text-align: center; color: var(--text-muted); padding: 10px;">今後の練習予定は未登録です。</div>'
-    practice_html_en = '<div class="col-span-full text-center py-4 text-slate-500">No upcoming practices scheduled at this time.</div>'
-else:
-    for p in practices:
-        # 共通データ
-        lat = p.get('lat', '')
-        lon = p.get('lon', '')
-        full_date = p.get('fullDateStr', '')
-        time_str = p.get('time', '')
-        display_time = "TBA" if time_str == "--:--" else time_str
-        
-        # --- 日本語版の生成 ---
-        day_label = p.get('dayLabel', '')
-        badge_class = 'mon'
-        if day_label == '水': badge_class = 'wed'
-        elif day_label == '金': badge_class = 'fri'
+for p in practices:
+    day = p.get('dayLabel','')
+    en_day = d_map.get(day, "DAY")
+    cls = "mon" if en_day=="MON" else "wed" if en_day=="WED" else "fri" if en_day=="FRI" else "mon"
+    loc = p.get('location','')
+    en_loc = next((v for k,v in l_map.items() if k in loc), "TBA")
+    
+    # JP
+    jp_html += f'<div class="day-row practice-item" data-lat="{p.get("lat","")}" data-lon="{p.get("lon","")}" data-date="{p.get("fullDateStr","")}" data-time="{p.get("time","")}"><div class="date-badge-container"><span class="practice-date">{p.get("displayDate","")}</span><span class="day-badge {cls}">{day}</span></div><div class="loc-time-container"><div class="loc-details"><span class="day-loc">{loc}</span><span class="day-station">{p.get("station","")}</span></div><div class="time-weather-container"><span class="day-time">{p.get("time","")}</span><div class="weather-box" style="display:none;"></div></div></div></div>'
+    
+    # EN
+    en_html += f'<div class="bg-white p-5 rounded-xl border-l-4 shadow-sm practice-item" data-lat="{p.get("lat","")}" data-lon="{p.get("lon","")}" data-date="{p.get("fullDateStr","")}" data-time="{p.get("time","")}"><div class="flex justify-between items-start mb-1"><span class="font-bold text-sm">{en_day}</span><span class="text-xs text-slate-400">{p.get("displayDate","")}</span></div><p class="font-black text-slate-800 mb-2">{en_loc}</p><div class="flex items-center justify-between mt-2"><div class="text-blue-600 font-bold">{p.get("time","")}</div><div class="weather-box text-xs font-bold bg-slate-100 px-2 py-1 rounded hidden"></div></div></div>'
 
-        station = p.get('station', '')
-        station_html = f'<span class="day-station">{station}</span>' if station else '<span class="day-station" style="display:none;"></span>'
-        
-        practice_html_jp += f"""
-        <div class="day-row practice-item" data-lat="{lat}" data-lon="{lon}" data-date="{full_date}" data-time="{time_str}">
-            <div class="date-badge-container">
-                <span class="practice-date">{p.get("displayDate", "")}</span>
-                <span class="day-badge {badge_class}">{day_label}</span>
-            </div>
-            <div class="loc-time-container">
-                <div class="loc-details">
-                    <span class="day-loc">{p.get("location", "")}</span>
-                    {station_html}
-                </div>
-                <div class="time-weather-container">
-                    <span class="day-time">{time_str}</span>
-                    <div class="weather-box" style="display:none;"></div>
-                </div>
-            </div>
-        </div>
-        """
+# 書き出し
+def bake(t, o, c, p, marker):
+    if not os.path.exists(t): return
+    with open(t,'r',encoding='utf-8') as f: content = f.read()
+    content = re.sub(r'<!--\s*INJECT_COUNTDOWN_HERE\s*-->', c, content)
+    content = re.sub(fr'<!--\s*{marker}\s*-->', p, content)
+    with open(o,'w',encoding='utf-8') as f: f.write(content)
 
-        # --- 英語版の生成 ---
-        en_day = translator_days.get(day_label, "DAY")
-        
-        jp_loc = p.get("location", "")
-        en_loc = "TBA" if not jp_loc else jp_loc
-        for jp_key, en_val in translator_locs.items():
-            if jp_key in jp_loc:
-                en_loc = en_val
-                break
-                
-        # 日付を英語フォーマット（例: "May 2"）に変換
-        jp_date = p.get("displayDate", "")
-        en_date = jp_date
-        if "/" in jp_date:
-            parts = jp_date.split("/")
-            if len(parts) == 2:
-                en_date = f"{month_abbr[int(parts[0])-1]} {int(parts[1])}"
-
-        color_class = color_styles.get(en_day, color_styles["DEFAULT"])
-        border_color, text_color = color_class.split(' ')
-
-        practice_html_en += f"""
-        <div class="bg-white p-5 rounded-xl border-l-4 {border_color} shadow-sm transition hover:shadow-md flex flex-col justify-between practice-item" data-lat="{lat}" data-lon="{lon}" data-date="{full_date}" data-time="{time_str}">
-            <div>
-                <div class="flex justify-between items-start mb-1">
-                    <span class="font-bold text-sm {text_color}">{en_day}</span>
-                    <span class="text-xs font-medium text-slate-400">{en_date}</span>
-                </div>
-                <p class="font-black text-lg text-slate-800 leading-tight mb-2">{en_loc}</p>
-            </div>
-            <div class="flex items-center justify-between mt-2">
-                <div class="flex items-center text-blue-600 font-bold">
-                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    {display_time}
-                </div>
-                <div class="weather-box text-sm font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded hidden items-center gap-1"></div>
-            </div>
-        </div>
-        """
-
-# --- 3. テンプレートの結合と書き出し ---
-# 日本語版（ルート直下）
-with open('template.html', 'r', encoding='utf-8') as f:
-    template_jp = f.read()
-final_html_jp = template_jp.replace('<!-- INJECT_COUNTDOWN_HERE -->', countdown_html)
-final_html_jp = final_html_jp.replace('<!-- INJECT_PRACTICE_HERE -->', practice_html_jp)
-with open('index.html', 'w', encoding='utf-8') as f:
-    f.write(final_html_jp)
-
-# 英語版（englishディレクトリ内）
-# フォルダが存在しない場合に備えて自動作成を試みる
+bake('template.html', 'index.html', c_html, jp_html, 'INJECT_PRACTICE_HERE')
 os.makedirs('english', exist_ok=True)
-
-# テンプレートの存在を確認して書き出し
-en_template_path = 'english/template.html'
-if os.path.exists(en_template_path):
-    with open(en_template_path, 'r', encoding='utf-8') as f:
-        template_en = f.read()
-    final_html_en = template_en.replace('<!-- INJECT_EN_PRACTICE_HERE -->', practice_html_en)
-    with open('english/index.html', 'w', encoding='utf-8') as f:
-        f.write(final_html_en)
-else:
-    # テンプレートが見つからない場合のデバッグ用（Actionsのログに出力される）
-    print(f"Warning: {en_template_path} not found. Skipping English build.")
+bake('english/template.html', 'english/index.html', '', en_html, 'INJECT_EN_PRACTICE_HERE')
