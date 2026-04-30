@@ -2,8 +2,8 @@ name: Auto Build & Deploy
 
 on:
   schedule:
-    - cron: '0 15 * * *' # 毎日 日本時間0時 (UTC 15時)に実行
-  workflow_dispatch: # 画面上から手動で実行するためのボタン
+    - cron: '0 15 * * *' # 毎日 日本時間0時 (UTC 15時)
+  workflow_dispatch: # 手動実行用
 
 jobs:
   build:
@@ -11,9 +11,11 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v3
+      # Node.js 24対応の最新バージョンに更新
+      - uses: actions/checkout@v4 
+      
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
       
@@ -24,5 +26,5 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add index.html
+          git add index.html english/index.html
           git diff --quiet && git diff --staged --quiet || (git commit -m "Auto build index.html" && git push)
