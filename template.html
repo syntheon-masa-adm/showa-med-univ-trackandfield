@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>昭和医科大学医学部陸上部 公式サイト</title>
-    <meta name="description" content="昭和医科大学医学部陸上競技部の公式ホームページです。最新の大会予定、直近の練習メニュー、活動場所などの情報を発信しています。">
+    <meta name="description" content="昭和医科大学医学部陸上競技部の公式ホームページです。最新の大会予定、練習メニュー、活動場所を配信。">
     <link rel="canonical" href="https://syntheon-masa-adm.github.io/showa-med-univ-trackandfield/">
     <style>
         :root { --primary-color: #0056b3; --bg-color: #f4f7f6; --card-bg: #ffffff; --text-main: #333333; --text-muted: #666666; --accent-color: #e63946; --info-color: #2a9d8f; }
@@ -17,23 +17,22 @@
         .countdown-target { font-weight: bold; font-size: 1.2rem; color: var(--primary-color); margin-bottom: 5px; }
         .days-remaining { font-size: 4rem; font-weight: bold; color: var(--accent-color); }
         .days-unit { font-size: 1.5rem; color: var(--accent-color); }
-        .practice-info { display: flex; flex-direction: column; gap: 15px; background-color: #f8fdfc; border: 2px solid #e0f2f1; }
         .practice-days { display: flex; flex-direction: column; gap: 12px; width: 100%; }
-        .day-row { display: flex; align-items: center; justify-content: space-between; background: white; padding: 12px 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); position: relative; }
+        .day-row { display: flex; align-items: center; justify-content: space-between; background: white; padding: 12px 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .date-badge-container { display: flex; flex-direction: column; align-items: center; width: 50px; flex-shrink: 0; }
-        .practice-date { font-size: 0.8rem; font-weight: bold; color: var(--text-muted); margin-bottom: 2px; }
+        .practice-date { font-size: 0.8rem; font-weight: bold; color: var(--text-muted); }
         .day-badge { font-weight: bold; color: white; padding: 5px 0; border-radius: 20px; font-size: 0.9rem; width: 45px; text-align: center; }
         .day-badge.mon { background-color: #fca311; } .day-badge.wed { background-color: #4ea8de; } .day-badge.fri { background-color: #ef476f; }
-        .loc-details { display: flex; flex-direction: column; align-items: flex-start; text-align: left; flex-grow: 1; margin-left: 15px; }
+        .loc-details { text-align: left; flex-grow: 1; margin-left: 15px; }
         .day-loc { font-weight: bold; color: var(--text-main); font-size: 1.1rem; }
         .day-time { color: var(--info-color); font-weight: bold; font-size: 1.2rem; }
-        .weather-box { font-size: 0.85rem; color: var(--text-muted); margin-top: 3px; display: flex; align-items: center; gap: 4px; background: #f0f4f8; padding: 2px 6px; border-radius: 8px; min-height: 20px; }
-        .nav-button { display: block; background-color: var(--primary-color); color: white; text-decoration: none; text-align: center; padding: 20px; border-radius: 12px; font-size: 1.2rem; font-weight: bold; box-shadow: 0 4px 15px rgba(0,86,179,0.2); }
+        .weather-box { font-size: 0.85rem; color: var(--text-muted); margin-top: 3px; display: none; align-items: center; gap: 4px; background: #f0f4f8; padding: 2px 6px; border-radius: 8px; }
+        .nav-button { display: block; background-color: var(--primary-color); color: white; text-decoration: none; text-align: center; padding: 20px; border-radius: 12px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,86,179,0.2); }
         .sns-container { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        .sns-link { text-decoration: none; color: white; text-align: center; padding: 12px; border-radius: 8px; font-size: 0.9rem; font-weight: bold; }
+        .sns-link { text-decoration: none; color: white; text-align: center; padding: 12px; border-radius: 8px; font-weight: bold; }
         .instagram { background: linear-gradient(45deg, #f09433 0%, #bc1888 100%); } .line { background-color: #06C755; }
     </style>
-    <script type="application/ld+json"> { "@context": "https://schema.org", "@type": "SportsTeam", "name": "昭和医科大学 陸上部", "sport": "Track and Field", "url": "https://syntheon-masa-adm.github.io/showa-med-univ-trackandfield/" } </script>
+    <script type="application/ld+json"> { "@context": "https://schema.org", "@type": "SportsTeam", "name": "昭和医科大学 陸上部", "url": "https://syntheon-masa-adm.github.io/showa-med-univ-trackandfield/" } </script>
 </head>
 <body>
     <header>
@@ -46,7 +45,7 @@
             <div class="section-label">次の大会まで</div>
             <!-- INJECT_COUNTDOWN_HERE -->
         </section>
-        <section class="card practice-info">
+        <section class="card" style="background-color: #f8fdfc; border: 2px solid #e0f2f1;">
             <div class="section-label">直近の練習予定</div>
             <div class="practice-days">
                 <!-- INJECT_PRACTICE_HERE -->
@@ -59,26 +58,43 @@
             <a href="https://lin.ee/tf78hYX" target="_blank" class="sns-link line">LINE公式アカウント</a>
         </div>
     </div>
+    
     <script>
         async function loadWeather() {
             const items = Array.from(document.querySelectorAll('.practice-item'));
-            const validItems = items.filter(i => i.dataset.lat && i.dataset.date && i.dataset.time !== "--:--");
-            if (!validItems.length) return;
-            const { lat, lon, date } = validItems[0].dataset;
-            try {
-                const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&start_date=${validItems[0].dataset.date}&end_date=${validItems[validItems.length-1].dataset.date}&hourly=temperature_2m,weathercode&timezone=Asia%2FTokyo`);
-                const data = await res.json();
-                validItems.forEach(item => {
-                    const hour = item.dataset.time.split(':')[0].padStart(2, '0');
-                    const idx = data.hourly.time.indexOf(`${item.dataset.date}T${hour}:00`);
+            if (!items.length) return;
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const limitDate = new Date(today);
+            limitDate.setDate(today.getDate() + 7);
+
+            await Promise.all(items.map(async (item) => {
+                const { lat, lon, date: dateStr, time: timeStr } = item.dataset;
+                if (!lat || !lon || !dateStr || timeStr === "--:--") return;
+
+                const practiceDate = new Date(dateStr);
+                if (practiceDate < today || practiceDate > limitDate) return;
+
+                try {
+                    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&start_date=${dateStr}&end_date=${dateStr}&hourly=temperature_2m,weathercode&timezone=Asia%2FTokyo`);
+                    if (!res.ok) return;
+                    const data = await res.json();
+
+                    const hour = timeStr.split(':')[0].padStart(2, '0');
+                    const targetTime = `${dateStr}T${hour}:00`;
+                    const idx = data.hourly.time.indexOf(targetTime);
+
                     if (idx !== -1) {
                         const box = item.querySelector('.weather-box');
                         const codes = {0:"☀️",1:"⛅️",2:"⛅️",3:"☁️",45:"🌫",51:"☔️",80:"🌧",95:"⚡️"};
                         box.innerHTML = `${codes[data.hourly.weathercode[idx]] || "🌡"} ${Math.round(data.hourly.temperature_2m[idx])}℃`;
                         box.style.display = 'flex';
                     }
-                });
-            } catch (e) { console.error(e); }
+                } catch (e) {
+                    console.error("Weather API skipped for this specific item:", e);
+                }
+            }));
         }
         document.addEventListener("DOMContentLoaded", loadWeather);
     </script>
