@@ -159,8 +159,8 @@ else:
 # 日本語版
 with open('template.html', 'r', encoding='utf-8') as f:
     template_jp = f.read()
-final_html_jp = template_jp.replace('', countdown_html)
-final_html_jp = final_html_jp.replace('', practice_html_jp)
+final_html_jp = template_jp.replace('<!-- INJECT_COUNTDOWN_HERE -->', countdown_html)
+final_html_jp = final_html_jp.replace('<!-- INJECT_PRACTICE_HERE -->', practice_html_jp)
 with open('index.html', 'w', encoding='utf-8') as f:
     f.write(final_html_jp)
 
@@ -168,6 +168,6 @@ with open('index.html', 'w', encoding='utf-8') as f:
 if os.path.exists('english/template.html'):
     with open('english/template.html', 'r', encoding='utf-8') as f:
         template_en = f.read()
-    final_html_en = template_en.replace('', practice_html_en)
+    final_html_en = template_en.replace('<!-- INJECT_EN_PRACTICE_HERE -->', practice_html_en)
     with open('english/index.html', 'w', encoding='utf-8') as f:
         f.write(final_html_en)
