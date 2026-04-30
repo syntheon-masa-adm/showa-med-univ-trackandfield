@@ -11,7 +11,7 @@
     <meta property="og:title" content="昭和医科大学医学部陸上部 公式サイト">
     <meta property="og:description" content="昭和医科大学医学部陸上競技部の公式ホームページです。最新の練習予定や大会情報を確認できます。">
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://syntheon-masa-adm.github.io/showa-med-univ-trackandfield/"> <!-- TODO: 実際のURLに変更 -->
+    <meta property="og:url" content="https://syntheon-masa-adm.github.io/showa-med-univ-trackandfield/"> 
     
     <style>
         :root {
@@ -43,6 +43,38 @@
             padding: 40px 0;
             text-align: center;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: relative; /* relative positioning for absolute children */
+        }
+
+        /* Language Switcher Styles */
+        .lang-switcher {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(4px);
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .lang-switcher:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        .lang-switcher .emoji {
+            font-size: 1.1rem;
+            line-height: 1;
         }
 
         .container {
@@ -175,7 +207,6 @@
             content: "🚉 ";
         }
 
-        /* 天気情報のコンテナ */
         .time-weather-container {
             display: flex;
             flex-direction: column;
@@ -201,7 +232,7 @@
             background: #f0f4f8;
             padding: 2px 6px;
             border-radius: 8px;
-            min-height: 20px; /* ローディング時のガタつき防止 */
+            min-height: 20px; 
         }
 
         .nav-button {
@@ -252,6 +283,11 @@
 <body>
 
     <header>
+        <a href="en.html" class="lang-switcher">
+            <span class="emoji">🌍</span>
+            <span>English</span>
+        </a>
+
         <h1>SHOWA MED-UNIV. TRACK & FIELD</h1>
         <p>昭和医科大学 陸上部</p>
     </header>
@@ -284,7 +320,6 @@
     </div>
 
     <script>
-        // --- 1. 大会カレンダー表示ロジック ---
         const meets = [
             { date: "2026/05/02", name: "M×Kディスタンストライアル" },
             { date: "2026/05/16", name: "M×Kディスタンストライアル" },
@@ -315,7 +350,6 @@
             }
         }
 
-        // --- 2. 天気取得ロジック（最適化済） ---
         function getWeatherEmoji(code) {
             if (code === 0) return "☀️"; 
             if (code === 1 || code === 2) return "⛅️"; 
@@ -328,32 +362,26 @@
             return "🌡";
         }
 
-        // 【改善点】複数日の天気を「1回のAPI通信」で一括取得する関数
         async function fetchWeatherBulk(practices) {
             if (!practices || practices.length === 0) return;
 
-            // 天気取得が必要なデータ（緯度経度があり、時間が設定されているもの）を抽出
             const validPractices = practices.filter(p => p.lat && p.lon && p.time !== "--:--");
             if (validPractices.length === 0) return;
 
-            // 最初の練習場所の緯度経度を使用（※複数の場所が大きく離れている場合は要再設計）
             const lat = validPractices[0].lat;
             const lon = validPractices[0].lon;
 
-            // 取得する期間（最も古い日〜最も新しい日）を算出
             const dates = validPractices.map(p => p.fullDateStr).sort();
             const startDate = dates[0];
             const endDate = dates[dates.length - 1];
 
             try {
-                // Open-Meteo API: 指定期間のデータを一括で取得
                 const apiUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&start_date=${startDate}&end_date=${endDate}&hourly=temperature_2m,weathercode&timezone=Asia%2FTokyo`;
                 
                 const response = await fetch(apiUrl);
                 if (!response.ok) throw new Error('Weather API fetch failed');
                 const weatherData = await response.json();
 
-                // 取得したデータを各DOM（HTML要素）に反映
                 validPractices.forEach((p, index) => {
                     const startHour = parseInt(p.time.split(':')[0], 10);
                     if (isNaN(startHour)) return;
@@ -366,7 +394,6 @@
                         const code = weatherData.hourly.weathercode[timeIndex];
                         const emoji = getWeatherEmoji(code);
                         
-                        // 対応する要素を探して書き換え
                         const weatherBox = document.getElementById(`weather-box-${p.id}`);
                         if (weatherBox) {
                             weatherBox.innerHTML = `${emoji} ${temp}℃`;
@@ -380,7 +407,6 @@
             }
         }
 
-        // --- 3. 練習予定取得ロジック ---
         async function initPracticeInfo() {
             const container = document.querySelector('.practice-days');
             const loading = document.getElementById('practice-loading');
@@ -403,9 +429,7 @@
 
                 let practicesToDisplay = data.practices || [];
 
-                // DOM（HTML要素）の生成
                 practicesToDisplay.forEach((p, index) => {
-                    // IDを付与（天気を一括で紐付けるため）
                     p.id = `practice-${index}`; 
                     
                     let badgeClass = 'mon';
@@ -436,7 +460,6 @@
                     container.insertAdjacentHTML('beforeend', html);
                 });
 
-                // 【改善点】DOMの描画が完了した後に、一括で天気を取りに行く
                 fetchWeatherBulk(practicesToDisplay);
                 
             } catch (error) {
@@ -445,7 +468,6 @@
             }
         }
 
-        // 初期化実行
         initPortal();
         initPracticeInfo();
     </script>
