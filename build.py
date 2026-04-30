@@ -11,22 +11,52 @@ try:
 except Exception as e:
     practices = []
 
-# 2. HTML要素の生成
+# 2. HTML要素の完全な生成
 html_content = ""
 if not practices:
-    html_content = '<div style="text-align: center; padding: 10px;">今後の練習予定は未登録です。</div>'
+    html_content = '<div style="text-align: center; color: var(--text-muted); padding: 10px;">今後の練習予定は未登録です。</div>'
 else:
     for p in practices:
-        # ※ここに本来はJSONからHTMLタグを組み立てる処理が入る（今回は簡略化のモックアップ）
-        html_content += f'<div class="day-row"><span class="practice-date">{p.get("displayDate", "")}</span> <span class="day-loc">{p.get("location", "")}</span></div>'
+        # 曜日に応じたバッジの色の判定
+        day_label = p.get('dayLabel', '')
+        badge_class = 'mon'
+        if day_label == '水':
+            badge_class = 'wed'
+        elif day_label == '金':
+            badge_class = 'fri'
+
+        # 駅情報の判定
+        station = p.get('station', '')
+        if station:
+            station_html = f'<span class="day-station">{station}</span>'
+        else:
+            station_html = '<span class="day-station" style="display:none;"></span>'
+
+        # 元のデザイン（CSS）を適用するための完全なHTML構造
+        html_content += f"""
+        <div class="day-row">
+            <div class="date-badge-container">
+                <span class="practice-date">{p.get("displayDate", "")}</span>
+                <span class="day-badge {badge_class}">{day_label}</span>
+            </div>
+            <div class="loc-time-container">
+                <div class="loc-details">
+                    <span class="day-loc">{p.get("location", "")}</span>
+                    {station_html}
+                </div>
+                <div class="time-weather-container">
+                    <span class="day-time">{p.get("time", "")}</span>
+                </div>
+            </div>
+        </div>
+        """
 
 # 3. テンプレートの読み込みと置換
 with open('template.html', 'r', encoding='utf-8') as f:
     template = f.read()
 
-# 目印の部分を、生成したHTMLに置き換える
-final_html = template.replace('<!-- INJECT_PRACTICE_HERE -->', html_content)
+final_html = template.replace('', html_content)
 
-# 4. index.html として書き出し（これがクローラーに読まれる実体となる）
+# 4. index.html として書き出し
 with open('index.html', 'w', encoding='utf-8') as f:
     f.write(final_html)
