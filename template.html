@@ -296,7 +296,6 @@
             <span class="emoji">🌍</span>
             <span>English</span>
         </a>
-
         <h1>SHOWA MED-UNIV. TRACK & FIELD</h1>
         <p>昭和医科大学 陸上部</p>
     </header>
@@ -304,18 +303,12 @@
     <div class="container">
         <section class="card">
             <div class="section-label">次の大会まで</div>
-            <div id="event-name" class="countdown-target">読み込み中...</div>
-            <div>
-                <span id="days-count" class="days-remaining">--</span>
-                <span class="days-unit">DAYS LEFT</span>
-            </div>
-        </section>
+            </section>
 
         <section class="card practice-info">
             <div class="section-label">直近の練習予定</div>
             <div class="practice-days">
-                <!-- INJECT_PRACTICE_HERE -->
-            </div>
+                </div>
         </section>
 
         <a href="./menu/" class="nav-button">今週の練習メニュー</a>
@@ -328,38 +321,66 @@
     </div>
 
     <script>
-        const meets = [
-            { date: "2026/05/02", name: "M×Kディスタンストライアル" },
-            { date: "2026/05/16", name: "M×Kディスタンストライアル" },
-            { date: "2026/06/06", name: "MDPV陸上大会" },
-            { date: "2026/07/19", name: "東コメ" },
-            { date: "2026/08/08", name: "東医体" },
-            { date: "2026/08/29", name: "全日本MDPV" },
-            { date: "2026/09/20", name: "関東医" }
-        ];
+        function getWeatherEmoji(code) {
+            if (code === 0) return "☀️"; 
+            if (code === 1 || code === 2) return "⛅️"; 
+            if (code === 3) return "☁️"; 
+            if (code >= 45 && code <= 48) return "🌫"; 
+            if (code >= 51 && code <= 67) return "☔️"; 
+            if (code >= 71 && code <= 77) return "⛄️"; 
+            if (code >= 80 && code <= 82) return "🌧"; 
+            if (code >= 95) return "⚡️"; 
+            return "🌡";
+        }
 
-        function initPortal() {
-            const now = new Date();
-            const futureMeets = meets
-                .map(m => ({ ...m, dateObj: new Date(m.date) }))
-                .filter(m => m.dateObj >= now.setHours(0,0,0,0))
-                .sort((a, b) => a.dateObj - b.dateObj);
+        async function loadWeather() {
+            // HTML内から練習予定のデータを収集
+            const items = Array.from(document.querySelectorAll('.practice-item'));
+            const validItems = items.filter(item => item.dataset.lat && item.dataset.lon && item.dataset.date && item.dataset.time !== "--:--");
+            
+            if (validItems.length === 0) return;
 
-            if (futureMeets.length > 0) {
-                const next = futureMeets[0];
-                const diffTime = next.dateObj - new Date();
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                
-                document.getElementById('event-name').innerText = next.name;
-                document.getElementById('days-count').innerText = diffDays;
-            } else {
-                document.getElementById('event-name').innerText = "今シーズンの大会は終了しました";
-                document.getElementById('days-count').innerText = "0";
+            const lat = validItems[0].dataset.lat;
+            const lon = validItems[0].dataset.lon;
+            const dates = validItems.map(item => item.dataset.date).sort();
+            const startDate = dates[0];
+            const endDate = dates[dates.length - 1];
+
+            try {
+                // Open-Meteo APIを叩く
+                const apiUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&start_date=${startDate}&end_date=${endDate}&hourly=temperature_2m,weathercode&timezone=Asia%2FTokyo`;
+                const response = await fetch(apiUrl);
+                if (!response.ok) throw new Error('Weather API failed');
+                const weatherData = await response.json();
+
+                // 取得した天気を各要素に挿入
+                validItems.forEach(item => {
+                    const timeStr = item.dataset.time;
+                    const startHour = parseInt(timeStr.split(':')[0], 10);
+                    if (isNaN(startHour)) return;
+
+                    const targetTimePrefix = `${item.dataset.date}T${String(startHour).padStart(2, '0')}:00`;
+                    const timeIndex = weatherData.hourly.time.findIndex(t => t === targetTimePrefix);
+
+                    if (timeIndex !== -1) {
+                        const temp = Math.round(weatherData.hourly.temperature_2m[timeIndex]);
+                        const code = weatherData.hourly.weathercode[timeIndex];
+                        const emoji = getWeatherEmoji(code);
+                        
+                        const weatherBox = item.querySelector('.weather-box');
+                        if (weatherBox) {
+                            weatherBox.innerHTML = `${emoji} ${temp}℃`;
+                            weatherBox.style.display = 'flex';
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error("天気データの取得に失敗しました", error);
             }
         }
 
-        // 大会までのカウントダウンのみブラウザ側で実行（SEOに影響しないため）
-        initPortal();
+        // 画面のメインデータが読み込まれた直後に、天気だけを裏で取得する
+        document.addEventListener("DOMContentLoaded", loadWeather);
     </script>
 </body>
 </html>
