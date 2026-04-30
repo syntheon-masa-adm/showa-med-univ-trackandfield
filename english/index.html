@@ -9,18 +9,15 @@
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #1e293b; }
         
-        /* Loading Animation */
         .animate-pulse-fast { animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
     </style>
 </head>
 <body class="antialiased">
 
-    <!-- Hero Header -->
     <header class="relative bg-blue-700 text-white py-12 px-6 text-center shadow-lg">
-        <!-- Language Switcher -->
         <div class="absolute top-4 right-4 md:top-6 md:right-8">
-            <a href="index.html" class="flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white text-sm font-bold py-2 px-4 rounded-full transition backdrop-blur-sm border border-white/30 shadow-sm">
+            <a href="../" class="flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white text-sm font-bold py-2 px-4 rounded-full transition backdrop-blur-sm border border-white/30 shadow-sm">
                 <span class="text-base leading-none">🇯🇵</span>
                 <span>see japanese version</span>
             </a>
@@ -32,7 +29,6 @@
 
     <main class="max-w-4xl mx-auto p-6 space-y-10">
 
-        <!-- Welcome Section -->
         <section class="bg-white rounded-2xl p-8 shadow-sm border border-slate-200">
             <h2 class="text-2xl font-bold text-blue-700 border-b-2 border-blue-100 pb-2 mb-4">Welcome, International Students!</h2>
             <p class="leading-relaxed mb-4">
@@ -48,7 +44,6 @@
             </div>
         </section>
 
-        <!-- Dynamic Practice Schedule Section -->
         <section class="space-y-4">
             <h2 class="text-2xl font-bold flex items-center">
                 <span class="bg-blue-700 text-white p-2 rounded-lg mr-3 shadow-md">
@@ -57,9 +52,7 @@
                 Upcoming Practice Schedule
             </h2>
             
-            <!-- JavaScriptでここにデータが挿入される -->
             <div id="dynamic-practice-container" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <!-- Loading State -->
                 <div class="col-span-full text-center py-8 text-slate-500 font-medium animate-pulse-fast">
                     Fetching latest schedule from database...
                 </div>
@@ -68,7 +61,6 @@
             <p class="text-xs text-slate-400 mt-2 text-center">*Schedule is subject to change due to weather or track availability.</p>
         </section>
 
-        <!-- Global Mindset Section -->
         <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div class="bg-blue-50 p-6 rounded-2xl border border-blue-100">
                 <h3 class="font-bold text-blue-800 mb-2 flex items-center">
@@ -90,7 +82,6 @@
             </div>
         </section>
 
-        <!-- Major Competitions -->
         <section class="bg-slate-900 text-white rounded-2xl p-8 shadow-xl">
             <h2 class="text-2xl font-bold mb-6">Upcoming 2026 Season</h2>
             <div class="space-y-6">
@@ -124,9 +115,7 @@
         <p class="text-sm text-slate-500 font-bold uppercase tracking-widest">Showa University Medical School Track & Field Club</p>
     </footer>
 
-    <!-- Translation Engine & API Logic -->
     <script>
-        // 1. 高速フロントエンド翻訳辞書 (Dictionary Mapping)
         const translator = {
             days: {
                 "月": "MON",
@@ -167,7 +156,6 @@
             "DEFAULT": "border-slate-400 text-slate-500"
         };
 
-        // --- Weather Fetch Logic (Bulk Mode) ---
         function getWeatherEmoji(code) {
             if (code === 0) return "☀️"; 
             if (code === 1 || code === 2) return "⛅️"; 
@@ -215,17 +203,16 @@
                         const weatherBox = document.getElementById(`weather-box-${p.id}`);
                         if (weatherBox) {
                             weatherBox.innerHTML = `${emoji} ${temp}℃`;
-                            weatherBox.style.display = 'flex'; // hiddenを上書きして表示
+                            weatherBox.style.display = 'flex'; 
                         }
                     }
                 });
 
             } catch (error) {
-                console.error("Bulk weather fetch failed:", error); // 英語環境に合わせたエラーログ
+                console.error("Bulk weather fetch failed:", error); 
             }
         }
 
-        // 2. APIフェッチとDOM生成
         async function fetchAndRenderEnglishSchedule() {
             const container = document.getElementById('dynamic-practice-container');
             const gasUrl = "https://script.google.com/macros/s/AKfycbwJP2Ep80n7AdZrqYdgNlkdTpr2h41l6fqLT2pvXe1cxOzd3FR1rkhyhi7XcsXGIVx8/exec"; 
@@ -242,7 +229,7 @@
                 container.innerHTML = ''; 
 
                 data.practices.forEach((p, index) => {
-                    p.id = `en-practice-${index}`; // 英語用の一意なIDを付与
+                    p.id = `en-practice-${index}`; 
 
                     const enDay = translator.days[p.dayLabel] || "DAY";
                     const enLoc = translator.translateLoc(p.location);
@@ -258,7 +245,6 @@
                     const borderColor = colorClass.split(' ')[0];
                     const textColor = colorClass.split(' ')[1];
 
-                    // 天気枠（最初は非表示）を組み込んだカード設計
                     const cardHtml = `
                         <div class="bg-white p-5 rounded-xl border-l-4 ${borderColor} shadow-sm transition hover:shadow-md flex flex-col justify-between">
                             <div>
@@ -273,7 +259,6 @@
                                     <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                                     ${p.time === "--:--" ? "TBA" : p.time}
                                 </div>
-                                <!-- Weather Injection Point -->
                                 <div id="weather-box-${p.id}" class="text-sm font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded hidden items-center gap-1">
                                 </div>
                             </div>
@@ -282,7 +267,6 @@
                     container.insertAdjacentHTML('beforeend', cardHtml);
                 });
 
-                // DOM描画完了後に、N+1問題を回避するバルクフェッチを実行
                 fetchWeatherBulk(data.practices);
 
             } catch (error) {
