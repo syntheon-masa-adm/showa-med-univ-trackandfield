@@ -3,64 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Showa University Medical School Track & Field | International Portal</title>
+    <title>Showa University Track & Field | International</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
-    <style> body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #1e293b; } </style>
+    <style> body { background-color: #f8fafc; color: #1e293b; } </style>
 </head>
-<body class="antialiased">
-    <header class="relative bg-blue-700 text-white py-12 px-6 text-center shadow-lg">
-        <div class="absolute top-4 right-4">
-            <a href="../index.html" class="flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white text-sm font-bold py-2 px-4 rounded-full transition backdrop-blur-sm border border-white/30">
-                <span>🇯🇵 see japanese version</span>
-            </a>
-        </div>
-        <h1 class="text-4xl font-black uppercase mt-4">Showa Med-Univ. Track & Field</h1>
+<body class="antialiased font-sans">
+    <header class="bg-blue-700 text-white py-12 px-6 text-center shadow-lg relative">
+        <a href="../index.html" class="absolute top-4 right-4 bg-white/20 hover:bg-white/30 text-white text-xs font-bold py-2 px-4 rounded-full border border-white/30">🇯🇵 See Japanese version</a>
+        <h1 class="text-4xl font-black uppercase">Showa Med-Univ. Track & Field</h1>
         <p class="text-blue-100 text-lg font-medium">Join our community of student-athletes!</p>
     </header>
     <main class="max-w-4xl mx-auto p-6 space-y-10">
         <section class="bg-white rounded-2xl p-8 shadow-sm border border-slate-200">
-            <h2 class="text-2xl font-bold text-blue-700 border-b-2 border-blue-100 pb-2 mb-4">Welcome, International Students!</h2>
-            <p class="leading-relaxed mb-4">Our club welcomes all medical, dental, pharmacy, and nursing students. Experience Japanese "Bukatsu" culture!</p>
+            <h2 class="text-2xl font-bold text-blue-700 mb-4 border-b border-blue-50 pb-2">Welcome!</h2>
+            <p class="leading-relaxed mb-6">Our club welcomes international students across all faculties (Medicine, Dentistry, Pharmacy, and Nursing). Come experience the Japanese "Bukatsu" spirit!</p>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <a href="https://www.instagram.com/showa__trackandfield" target="_blank" class="bg-gradient-to-r from-pink-500 to-orange-500 text-white font-bold py-3 rounded-xl text-center shadow-md">Instagram</a>
-                <a href="https://lin.ee/tf78hYX" target="_blank" class="bg-[#06C755] text-white font-bold py-3 rounded-xl text-center shadow-md">LINE</a>
+                <a href="https://www.instagram.com/showa__trackandfield" target="_blank" class="bg-gradient-to-r from-pink-500 to-orange-500 text-white font-bold py-3 rounded-xl text-center shadow-md">Follow Instagram</a>
+                <a href="https://lin.ee/tf78hYX" target="_blank" class="bg-[#06C755] text-white font-bold py-3 rounded-xl text-center shadow-md">Contact LINE</a>
             </div>
         </section>
         <section class="space-y-4">
-            <h2 class="text-2xl font-bold">Upcoming Practice Schedule</h2>
+            <h2 class="text-2xl font-bold flex items-center">Upcoming Schedule</h2>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <!-- INJECT_EN_PRACTICE_HERE -->
             </div>
         </section>
-        <section class="bg-slate-900 text-white rounded-2xl p-8">
-            <h2 class="text-2xl font-bold mb-6">Upcoming 2026 Season</h2>
-            <div class="space-y-4 text-sm">
-                <p>JUL 19: East Come (Miyagi)</p>
-                <p>AUG 08: Toh-I-Tai (Saitama)</p>
-                <p>SEP 20: Kanto-I (Tochigi)</p>
-            </div>
-        </section>
     </main>
+    
     <script>
         async function loadWeather() {
             const items = Array.from(document.querySelectorAll('.practice-item'));
             if (!items.length) return;
-            try {
-                const { lat, lon, date } = items[0].dataset;
-                const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&start_date=${items[0].dataset.date}&end_date=${items[items.length-1].dataset.date}&hourly=temperature_2m,weathercode&timezone=Asia%2FTokyo`);
-                const data = await res.json();
-                items.forEach(item => {
-                    const hour = item.dataset.time.split(':')[0].padStart(2, '0');
-                    const idx = data.hourly.time.indexOf(`${item.dataset.date}T${hour}:00`);
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const limitDate = new Date(today);
+            limitDate.setDate(today.getDate() + 7);
+
+            await Promise.all(items.map(async (item) => {
+                const { lat, lon, date: dateStr, time: timeStr } = item.dataset;
+                if (!lat || !lon || !dateStr || timeStr === "--:--") return;
+
+                const practiceDate = new Date(dateStr);
+                if (practiceDate < today || practiceDate > limitDate) return;
+
+                try {
+                    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&start_date=${dateStr}&end_date=${dateStr}&hourly=temperature_2m,weathercode&timezone=Asia%2FTokyo`);
+                    if (!res.ok) return;
+                    const data = await res.json();
+
+                    const hour = timeStr.split(':')[0].padStart(2, '0');
+                    const targetTime = `${dateStr}T${hour}:00`;
+                    const idx = data.hourly.time.indexOf(targetTime);
+
                     if (idx !== -1) {
                         const box = item.querySelector('.weather-box');
-                        const codes = {0:"☀️",1:"⛅️",3:"☁️",51:"☔️",80:"🌧"};
+                        const codes = {0:"☀️",1:"⛅️",2:"⛅️",3:"☁️",45:"🌫",51:"☔️",80:"🌧",95:"⚡️"};
                         box.innerHTML = `${codes[data.hourly.weathercode[idx]] || "🌡"} ${Math.round(data.hourly.temperature_2m[idx])}℃`;
-                        box.style.classList.remove('hidden'); box.style.display = 'flex';
+                        
+                        box.classList.remove('hidden');
+                        box.style.display = 'flex';
                     }
-                });
-            } catch (e) { console.error(e); }
+                } catch (e) {
+                    console.error("Weather API skipped for this specific item:", e);
+                }
+            }));
         }
         document.addEventListener("DOMContentLoaded", loadWeather);
     </script>
