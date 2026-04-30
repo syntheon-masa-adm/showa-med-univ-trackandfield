@@ -156,7 +156,7 @@ else:
         """
 
 # --- 3. テンプレートの結合と書き出し ---
-# 日本語版
+# 日本語版（ルート直下）
 with open('template.html', 'r', encoding='utf-8') as f:
     template_jp = f.read()
 final_html_jp = template_jp.replace('<!-- INJECT_COUNTDOWN_HERE -->', countdown_html)
@@ -164,10 +164,18 @@ final_html_jp = final_html_jp.replace('<!-- INJECT_PRACTICE_HERE -->', practice_
 with open('index.html', 'w', encoding='utf-8') as f:
     f.write(final_html_jp)
 
-# 英語版
-if os.path.exists('english/template.html'):
-    with open('english/template.html', 'r', encoding='utf-8') as f:
+# 英語版（englishディレクトリ内）
+# フォルダが存在しない場合に備えて自動作成を試みる
+os.makedirs('english', exist_ok=True)
+
+# テンプレートの存在を確認して書き出し
+en_template_path = 'english/template.html'
+if os.path.exists(en_template_path):
+    with open(en_template_path, 'r', encoding='utf-8') as f:
         template_en = f.read()
     final_html_en = template_en.replace('<!-- INJECT_EN_PRACTICE_HERE -->', practice_html_en)
     with open('english/index.html', 'w', encoding='utf-8') as f:
         f.write(final_html_en)
+else:
+    # テンプレートが見つからない場合のデバッグ用（Actionsのログに出力される）
+    print(f"Warning: {en_template_path} not found. Skipping English build.")
