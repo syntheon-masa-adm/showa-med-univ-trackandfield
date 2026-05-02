@@ -20,7 +20,7 @@ c_html = f'<div class="countdown-target">{next_m["name"]}</div><div><span class=
 jp_html = ""
 en_html = ""
 d_map = {"月":"MON","火":"TUE","水":"WED","木":"THU","金":"FRI","土":"SAT","日":"SUN"}
-l_map = {"東大":"UTokyo","織田":"Oda Field","等々力":"Todoroki Stadium","大井":"Oi Stadium","済美山":"Saibiyama","大学":"Uni Ground"}
+l_map = {"東大":"UTokyo","織田":"Oda Field","等々力":"Todoroki Stadium","大井":"Oi Stadium","大学":"Uni Ground"}
 
 for p in practices:
     day = p.get('dayLabel','')
