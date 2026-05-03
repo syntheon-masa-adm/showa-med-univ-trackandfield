@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Showa University Track & Field | International</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style> body { background-color: #f8fafc; color: #1e293b; } </style>
+</head>
+<body class="antialiased font-sans">
+    <header class="bg-blue-700 text-white py-12 px-6 text-center shadow-lg relative">
+        <a href="../index.html" class="absolute top-4 right-4 bg-white/20 hover:bg-white/30 text-white text-xs font-bold py-2 px-4 rounded-full border border-white/30">🇯🇵 See Japanese version</a>
+        <h1 class="text-4xl font-black uppercase">Showa Med-Univ. Track & Field</h1>
+        <p class="text-blue-100 text-lg font-medium">Join our community of student-athletes!</p>
+    </header>
+    <main class="max-w-4xl mx-auto p-6 space-y-10">
+        <section class="bg-white rounded-2xl p-8 shadow-sm border border-slate-200">
+            <h2 class="text-2xl font-bold text-blue-700 mb-4 border-b border-blue-50 pb-2">Welcome!</h2>
+            <p class="leading-relaxed mb-6">Our club welcomes international students across all faculties (Medicine, Dentistry, Pharmacy, and Nursing). Come experience the Japanese "Bukatsu" spirit!</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <a href="https://www.instagram.com/showa__trackandfield" target="_blank" class="bg-gradient-to-r from-pink-500 to-orange-500 text-white font-bold py-3 rounded-xl text-center shadow-md">Follow Instagram</a>
+                <a href="https://lin.ee/tf78hYX" target="_blank" class="bg-[#06C755] text-white font-bold py-3 rounded-xl text-center shadow-md">Contact LINE</a>
+            </div>
+        </section>
+        <section class="space-y-4">
+            <h2 class="text-2xl font-bold flex items-center">Upcoming Schedule</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-white p-5 rounded-xl border-l-4 border-blue-400 shadow-sm practice-item flex flex-col justify-between" data-lat="35.5866" data-lon="139.6475" data-date="2026-05-04" data-time="10:00"><div class="flex justify-between items-start mb-1"><span class="font-bold text-sm text-blue-600">MON</span><span class="text-xs text-slate-400">5/4</span></div><p class="font-black text-slate-800 mb-2">Todoroki Stadium</p><div class="flex items-center justify-between mt-2"><div class="text-blue-600 font-bold">10:00</div><div class="weather-box text-xs font-bold bg-slate-100 px-2 py-1 rounded hidden"></div></div></div><div class="bg-white p-5 rounded-xl border-l-4 border-blue-400 shadow-sm practice-item flex flex-col justify-between" data-lat="35.669" data-lon="139.6946" data-date="2026-05-06" data-time="10:00"><div class="flex justify-between items-start mb-1"><span class="font-bold text-sm text-blue-600">WED</span><span class="text-xs text-slate-400">5/6</span></div><p class="font-black text-slate-800 mb-2">Oda Field</p><div class="flex items-center justify-between mt-2"><div class="text-blue-600 font-bold">10:00</div><div class="weather-box text-xs font-bold bg-slate-100 px-2 py-1 rounded hidden"></div></div></div>
+            </div>
+        </section>
+    </main>
+    
+    <script>
+        async function loadWeather() {
+            const items = Array.from(document.querySelectorAll('.practice-item'));
+            if (!items.length) return;
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const limitDate = new Date(today);
+            limitDate.setDate(today.getDate() + 7);
+
+            await Promise.all(items.map(async (item) => {
+                const { lat, lon, date: dateStr, time: timeStr } = item.dataset;
+                if (!lat || !lon || !dateStr || timeStr === "--:--") return;
+
+                const practiceDate = new Date(dateStr);
+                if (practiceDate < today || practiceDate > limitDate) return;
+
+                try {
+                    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&start_date=${dateStr}&end_date=${dateStr}&hourly=temperature_2m,weathercode&timezone=Asia%2FTokyo`);
+                    if (!res.ok) return;
+                    const data = await res.json();
+
+                    const hour = timeStr.split(':')[0].padStart(2, '0');
+                    const targetTime = `${dateStr}T${hour}:00`;
+                    const idx = data.hourly.time.indexOf(targetTime);
+
+                    if (idx !== -1) {
+                        const box = item.querySelector('.weather-box');
+                        const codes = {0:"☀️",1:"⛅️",2:"⛅️",3:"☁️",45:"🌫",51:"☔️",80:"🌧",95:"⚡️"};
+                        box.innerHTML = `${codes[data.hourly.weathercode[idx]] || "🌡"} ${Math.round(data.hourly.temperature_2m[idx])}℃`;
+                        
+                        box.classList.remove('hidden');
+                        box.style.display = 'flex';
+                    }
+                } catch (e) {
+                    console.error("Weather API skipped for this specific item:", e);
+                }
+            }));
+        }
+        document.addEventListener("DOMContentLoaded", loadWeather);
+    </script>
+</body>
+</html>
