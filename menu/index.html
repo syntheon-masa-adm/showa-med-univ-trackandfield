@@ -150,8 +150,8 @@
                     return;
                 }
 
-                // 取得したJSON配列をループ処理し、HTML要素（カード）を生成
-                data.forEach(item => {
+                // 取得したJSON配列をループ処理し、直近3件のHTML要素（カード）を生成
+                data.slice(-3).forEach(item => {
                     const card = createCardElement(item);
                     container.appendChild(card);
                 });
@@ -171,7 +171,6 @@
             card.innerHTML = `
                 <div class="card-header">
                     <span class="day-badge">${item.note || '指定なし'}</span>
-                    <span class="date-text">${item.date || ''}</span>
                 </div>
                 <div class="block-name">${item.block || 'ブロック未設定'}</div>
                 <div class="menu-content">${item.menu || '休み'}</div>
