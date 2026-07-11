@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>部員専用ダッシュボード（Login） - 昭和医科大学医学部陸上部</title>
+    
+    <style>
+        :root {
+            --primary-color: #0056b3;
+            --bg-color: #f4f7f6;
+            --card-bg: #ffffff;
+            --text-main: #333333;
+            --text-muted: #666666;
+            --accent-color: #e63946;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            width: 100%;
+            padding: 40px 0;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .container {
+            max-width: 800px;
+            width: 95%;
+            margin-top: -30px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            padding-bottom: 40px;
+            flex-grow: 1;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+
+        .login-title {
+            margin-top: 0;
+            color: var(--text-main);
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .login-desc {
+            color: var(--text-muted);
+            line-height: 1.6;
+            margin-bottom: 25px;
+            font-size: 0.95rem;
+        }
+
+        /* 全体の器：PCなら中央にスマホサイズで、スマホなら画面幅いっぱいにフィット */
+        .looker-studio-embedded-container {
+            width: 100%;
+            max-width: 412px; /* PCで開かれた場合でも、最大横幅をスマホサイズに制限 */
+            margin: 10px auto 30px; /* 画面中央に配置 */
+            padding: 12px;
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        /* ヘッダー */
+        .embedded-header {
+            font-size: 14px;
+            font-weight: bold;
+            color: #333333;
+            padding: 0 0 10px 4px;
+            border-bottom: 1px solid #f0f0f0;
+            margin-bottom: 12px;
+            text-align: left;
+        }
+
+        /* 縦横比の絶対ロックインフラ */
+        .iframe-wrapper {
+            position: relative;
+            width: 100%;
+            /* キャンバスサイズ（412 : 1200）の比率を完全に固定 */
+            aspect-ratio: 412 / 1200; 
+            border-radius: 8px;
+            border: 1px solid #e8e8e8;
+            overflow: hidden; /* デバイス間での無駄な二重スクロールバーの発生を完全に防止 */
+        }
+        
+        .iframe-wrapper iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: 0;
+        }
+
+        .nav-button {
+            display: block;
+            background-color: var(--primary-color);
+            color: white;
+            text-decoration: none;
+            text-align: center;
+            padding: 15px 30px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            transition: transform 0.2s, background-color 0.2s;
+            margin-top: 10px;
+            width: fit-content;
+            margin-left: auto;
+            margin-right: auto;
+            box-shadow: 0 4px 15px rgba(0,86,179,0.2);
+        }
+
+        .nav-button:hover {
+            transform: translateY(-3px);
+            background-color: #004494;
+        }
+
+        .footer-note {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            padding: 20px;
+            text-align: center;
+            width: 100%;
+            background-color: var(--bg-color);
+            margin-top: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>SHOWA MED-UNIV. TRACK & FIELD</h1>
+        <p>昭和医科大学 陸上部</p>
+    </header>
+
+    <div class="container">
+        <section class="card">
+            <h2 class="login-title">🔒 部員専用ダッシュボード（Login）</h2>
+            <p class="login-desc">
+                「学籍番号」または「付与されたパスワード」を入力し、自身の記録推移と推奨練習メニューを確認してください。
+            </p>
+            
+            <!-- マイページ埋め込みコンテナ（PC・スマホ両対応 完全比率ロック版） -->
+            <div class="looker-studio-embedded-container">
+                <div class="embedded-header">
+                    <span>🔒 部員専用練習最適化ダッシュボード</span>
+                </div>
+              
+                <div class="iframe-wrapper">
+                    <!-- 提供された実数データに基づき、インフラ側で縦横比を完全制御 -->
+                    <iframe width="100%" 
+                            height="100%" 
+                            src="https://datastudio.google.com/embed/reporting/f778808e-18a2-4f5f-a377-aa4befdc2f1d/page/tnd3F" 
+                            frameborder="0" 
+                            style="border:0" 
+                            allowfullscreen 
+                            sandbox="allow-storage-access-by-user-activation allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox">
+                    </iframe>
+                </div>
+            </div>
+        </section>
+
+        <a href="./index.html" class="nav-button">🏠 トップページへ戻る</a>
+    </div>
+
+    <div class="footer-note">
+        ※このページは部員およびブロック長専用です。データの取り扱いには注意してください。（ハックできた猛者は主務まで連絡を）
+    </div>
+
+</body>
+</html>
