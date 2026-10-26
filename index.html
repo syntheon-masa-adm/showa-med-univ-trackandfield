@@ -387,6 +387,116 @@
         // 大会までのカウントダウンのみブラウザ側で実行（SEOに影響しないため）
         initPortal();
 
+        function renderDefaultPracticeSchedule() {
+            const container = document.querySelector(".practice-days");
+            const todayParts = new Intl.DateTimeFormat("en-US", {
+                timeZone: "Asia/Tokyo",
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit"
+            }).formatToParts(new Date());
+            const dateParts = Object.fromEntries(todayParts.map(part => [part.type, part.value]));
+            const today = new Date(Date.UTC(
+                Number(dateParts.year),
+                Number(dateParts.month) - 1,
+                Number(dateParts.day)
+            ));
+            const defaultLocations = {
+                1: {
+                    day: "月",
+                    dayClass: "mon",
+                    location: "駒場",
+                    time: "18:30",
+                    station: "駒場東大前駅（京王井の頭線）",
+                    lat: "35.6587",
+                    lon: "139.6845"
+                },
+                3: {
+                    day: "水",
+                    dayClass: "wed",
+                    location: "駒場",
+                    time: "18:30",
+                    station: "駒場東大前駅（京王井の頭線）",
+                    lat: "35.6587",
+                    lon: "139.6845"
+                },
+                5: {
+                    day: "金",
+                    dayClass: "fri",
+                    location: "夢の島陸上競技場",
+                    time: "18:00",
+                    station: "新木場駅（JR京葉線・東京メトロ有楽町線・りんかい線）",
+                    lat: "35.6486",
+                    lon: "139.8249"
+                }
+            };
+            const scheduledDates = new Set(
+                Array.from(container.querySelectorAll(".practice-item[data-date]"), item => item.dataset.date)
+            );
+            const emptyMessage = container.querySelector(':scope > div:not(.practice-item)');
+            if (emptyMessage && emptyMessage.textContent.includes("今後の練習予定は未登録です")) {
+                emptyMessage.remove();
+            }
+
+            for (let offset = 0; offset < 7; offset += 1) {
+                const practiceDate = new Date(today);
+                practiceDate.setUTCDate(today.getUTCDate() + offset);
+                const defaultPractice = defaultLocations[practiceDate.getUTCDay()];
+                const dateString = practiceDate.toISOString().slice(0, 10);
+                if (!defaultPractice || scheduledDates.has(dateString)) continue;
+
+                const row = document.createElement("div");
+                row.className = "day-row practice-item";
+                row.dataset.date = dateString;
+                row.dataset.time = defaultPractice.time;
+                row.dataset.lat = defaultPractice.lat;
+                row.dataset.lon = defaultPractice.lon;
+
+                const dateBadge = document.createElement("div");
+                dateBadge.className = "date-badge-container";
+                const dateLabel = document.createElement("span");
+                dateLabel.className = "practice-date";
+                dateLabel.textContent = `${practiceDate.getUTCMonth() + 1}/${practiceDate.getUTCDate()}`;
+                const dayBadge = document.createElement("div");
+                dayBadge.className = `day-badge ${defaultPractice.dayClass}`;
+                dayBadge.textContent = defaultPractice.day;
+                dateBadge.append(dateLabel, dayBadge);
+
+                const locationDetails = document.createElement("div");
+                locationDetails.className = "loc-details";
+                const location = document.createElement("span");
+                location.className = "day-loc";
+                location.textContent = defaultPractice.location;
+                locationDetails.append(location);
+                const station = document.createElement("span");
+                station.className = "day-station";
+                station.textContent = defaultPractice.station;
+                locationDetails.append(station);
+
+                const timeContainer = document.createElement("div");
+                timeContainer.className = "time-weather-container";
+                const time = document.createElement("span");
+                time.className = "day-time";
+                time.textContent = defaultPractice.time;
+                const weather = document.createElement("div");
+                weather.className = "weather-box";
+                weather.style.display = "none";
+                timeContainer.append(time, weather);
+
+                const details = document.createElement("div");
+                details.className = "loc-time-container";
+                details.append(locationDetails, timeContainer);
+                row.append(dateBadge, details);
+                container.append(row);
+            }
+
+            Array.from(container.querySelectorAll(".practice-item[data-date]"))
+                .sort((first, second) => first.dataset.date.localeCompare(second.dataset.date))
+                .forEach(row => container.append(row));
+        }
+
+        renderDefaultPracticeSchedule();
+
         async function loadWeather() {
             const items = Array.from(document.querySelectorAll('.practice-item'));
             if (!items.length) return;

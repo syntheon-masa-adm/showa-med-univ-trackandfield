@@ -134,7 +134,11 @@
                 "日": "SUN"
             },
             locations: {
+                "夢の島陸上競技場": "Yumenoshima Track and Field Stadium",
+                "駒場東大前駅（京王井の頭線）": "Komaba-Todaimae Station (Keio Inokashira Line)",
+                "新木場駅（JR京葉線・東京メトロ有楽町線・りんかい線）": "Shin-Kiba Station (JR Keiyo, Tokyo Metro Yurakucho, and Rinkai Lines)",
                 "東大駒場": "UTokyo Komaba",
+                "駒場": "Komaba",
                 "織田フィールド": "Oda Field",
                 "織田": "Oda Field",
                 "等々力競技場": "Todoroki Stadium",
@@ -181,43 +185,46 @@
             const validPractices = practices.filter(p => p.lat && p.lon && p.time !== "--:--");
             if (validPractices.length === 0) return;
 
-            const lat = validPractices[0].lat;
-            const lon = validPractices[0].lon;
+            const practicesByLocation = new Map();
+            validPractices.forEach(practice => {
+                const key = `${practice.lat},${practice.lon}`;
+                if (!practicesByLocation.has(key)) practicesByLocation.set(key, []);
+                practicesByLocation.get(key).push(practice);
+            });
 
-            const dates = validPractices.map(p => p.fullDateStr).sort();
-            const startDate = dates[0];
-            const endDate = dates[dates.length - 1];
-
-            try {
+            await Promise.all(Array.from(practicesByLocation.values(), async locationPractices => {
+                const dates = locationPractices.map(practice => practice.fullDateStr).sort();
+                const startDate = dates[0];
+                const endDate = dates[dates.length - 1];
+                const { lat, lon } = locationPractices[0];
                 const apiUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&start_date=${startDate}&end_date=${endDate}&hourly=temperature_2m,weathercode&timezone=Asia%2FTokyo`;
-                
-                const response = await fetch(apiUrl);
-                if (!response.ok) throw new Error('Weather API fetch failed');
-                const weatherData = await response.json();
 
-                validPractices.forEach(p => {
-                    const startHour = parseInt(p.time.split(':')[0], 10);
-                    if (isNaN(startHour)) return;
+                try {
+                    const response = await fetch(apiUrl);
+                    if (!response.ok) throw new Error('Weather API fetch failed');
+                    const weatherData = await response.json();
 
-                    const targetTimePrefix = `${p.fullDateStr}T${String(startHour).padStart(2, '0')}:00`;
-                    const timeIndex = weatherData.hourly.time.findIndex(t => t === targetTimePrefix);
+                    locationPractices.forEach(practice => {
+                        const startHour = parseInt(practice.time.split(':')[0], 10);
+                        if (isNaN(startHour)) return;
 
-                    if (timeIndex !== -1) {
-                        const temp = Math.round(weatherData.hourly.temperature_2m[timeIndex]);
-                        const code = weatherData.hourly.weathercode[timeIndex];
-                        const emoji = getWeatherEmoji(code);
-                        
-                        const weatherBox = document.getElementById(`weather-box-${p.id}`);
-                        if (weatherBox) {
-                            weatherBox.innerHTML = `${emoji} ${temp}℃`;
-                            weatherBox.style.display = 'flex'; 
+                        const targetTime = `${practice.fullDateStr}T${String(startHour).padStart(2, '0')}:00`;
+                        const timeIndex = weatherData.hourly.time.findIndex(time => time === targetTime);
+
+                        if (timeIndex !== -1) {
+                            const temp = Math.round(weatherData.hourly.temperature_2m[timeIndex]);
+                            const emoji = getWeatherEmoji(weatherData.hourly.weathercode[timeIndex]);
+                            const weatherBox = document.getElementById(`weather-box-${practice.id}`);
+                            if (weatherBox) {
+                                weatherBox.innerHTML = `${emoji} ${temp}℃`;
+                                weatherBox.style.display = 'flex';
+                            }
                         }
-                    }
-                });
-
-            } catch (error) {
-                console.error("Bulk weather fetch failed:", error); 
-            }
+                    });
+                } catch (error) {
+                    console.error("Bulk weather fetch failed:", error);
+                }
+            }));
         }
 
         async function fetchAndRenderEnglishSchedule() {
@@ -227,19 +234,80 @@
             try {
                 const response = await fetch(gasUrl);
                 const data = await response.json();
+                const practices = Array.isArray(data.practices) ? data.practices : [];
+                const todayParts = new Intl.DateTimeFormat("en-US", {
+                    timeZone: "Asia/Tokyo",
+                    year: "numeric",
+                    month: "2-digit",
+                    day: "2-digit"
+                }).formatToParts(new Date());
+                const dateParts = Object.fromEntries(todayParts.map(part => [part.type, part.value]));
+                const today = new Date(Date.UTC(
+                    Number(dateParts.year),
+                    Number(dateParts.month) - 1,
+                    Number(dateParts.day)
+                ));
+                const defaultLocations = {
+                    1: {
+                        dayLabel: "月",
+                        location: "駒場",
+                        time: "18:30",
+                        station: "駒場東大前駅（京王井の頭線）",
+                        lat: "35.6587",
+                        lon: "139.6845"
+                    },
+                    3: {
+                        dayLabel: "水",
+                        location: "駒場",
+                        time: "18:30",
+                        station: "駒場東大前駅（京王井の頭線）",
+                        lat: "35.6587",
+                        lon: "139.6845"
+                    },
+                    5: {
+                        dayLabel: "金",
+                        location: "夢の島陸上競技場",
+                        time: "18:00",
+                        station: "新木場駅（JR京葉線・東京メトロ有楽町線・りんかい線）",
+                        lat: "35.6486",
+                        lon: "139.8249"
+                    }
+                };
+                const scheduledDates = new Set(practices.map(practice => practice.fullDateStr));
 
-                if (data.error || !data.practices || data.practices.length === 0) {
+                for (let offset = 0; offset < 7; offset += 1) {
+                    const practiceDate = new Date(today);
+                    practiceDate.setUTCDate(today.getUTCDate() + offset);
+                    const defaultPractice = defaultLocations[practiceDate.getUTCDay()];
+                    const dateString = practiceDate.toISOString().slice(0, 10);
+                    if (!defaultPractice || scheduledDates.has(dateString)) continue;
+
+                    practices.push({
+                        dayLabel: defaultPractice.dayLabel,
+                        displayDate: `${practiceDate.getUTCMonth() + 1}/${practiceDate.getUTCDate()}`,
+                        fullDateStr: dateString,
+                        location: defaultPractice.location,
+                        station: defaultPractice.station,
+                        lat: defaultPractice.lat,
+                        lon: defaultPractice.lon,
+                        time: defaultPractice.time
+                    });
+                }
+
+                practices.sort((first, second) => first.fullDateStr.localeCompare(second.fullDateStr));
+                if (data.error && data.error !== "No upcoming practices") {
                     container.innerHTML = '<div class="col-span-full text-center py-4 text-slate-500">No upcoming practices scheduled at this time.</div>';
                     return;
                 }
 
                 container.innerHTML = ''; 
 
-                data.practices.forEach((p, index) => {
+                practices.forEach((p, index) => {
                     p.id = `en-practice-${index}`; 
 
                     const enDay = translator.days[p.dayLabel] || "DAY";
                     const enLoc = translator.translateLoc(p.location);
+                    const enStation = p.station ? translator.translateLoc(p.station) : "";
                     
                     let enDate = p.displayDate;
                     if(p.displayDate.includes('/')) {
@@ -260,6 +328,7 @@
                                     <span class="text-xs font-medium text-slate-400">${enDate}</span>
                                 </div>
                                 <p class="font-black text-lg text-slate-800 leading-tight mb-2">${enLoc}</p>
+                                ${enStation ? `<p class="text-xs text-slate-500 mb-2">🚉 ${enStation}</p>` : ""}
                             </div>
                             <div class="flex items-center justify-between mt-2">
                                 <div class="flex items-center text-blue-600 font-bold">
@@ -274,7 +343,7 @@
                     container.insertAdjacentHTML('beforeend', cardHtml);
                 });
 
-                fetchWeatherBulk(data.practices);
+                fetchWeatherBulk(practices);
 
             } catch (error) {
                 console.error("Translation & Fetch Error:", error);
